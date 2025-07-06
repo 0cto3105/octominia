@@ -1,7 +1,7 @@
-// lib/database/database_helper.dart
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-// Importez vos modèles, sinon il y aura des erreurs de "Undefined class"
+
+import 'package:octominia/models/order.dart';
 import 'package:octominia/models/faction.dart';
 import 'package:octominia/models/unit.dart';
 import 'package:octominia/models/keyword.dart';
@@ -33,21 +33,37 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      // *** IMPORTANT : Incrémenter la version de la BDD ***
+      version: 3, // Passe à la version 3
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future<void> _onCreate(Database db, int version) async {
+    // Création de la table Orders (MODIFIÉE : ajout de image_url)
+    await db.execute('''
+      CREATE TABLE orders(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        description TEXT,
+        image_url TEXT -- Nouvelle colonne
+      )
+    ''');
+
+    // Création de la table Factions (MODIFIÉE : ajout de order_id ET image_url)
     await db.execute('''
       CREATE TABLE factions(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
-        description TEXT
+        order_id INTEGER NOT NULL,
+        description TEXT,
+        image_url TEXT, -- Nouvelle colonne
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
       )
     ''');
 
+    // (Le reste des créations de tables est inchangé)
     await db.execute('''
       CREATE TABLE units(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -140,13 +156,56 @@ class DatabaseHelper {
     ''');
   }
 
+  // Fonction de migration
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Logique de migration future ici
+    if (oldVersion < 2) {
+      print('Migrating DB from version $oldVersion to 2');
+      await db.execute('ALTER TABLE factions RENAME TO factions_old');
+      await db.execute('''
+        CREATE TABLE factions(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          order_id INTEGER NOT NULL,
+          description TEXT,
+          FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+        )
+      ''');
+      final orderIdOrder = await db.insert('orders', {'name': 'Order', 'description': 'Forces of good and civilization'});
+      final orderIdChaos = await db.insert('orders', {'name': 'Chaos', 'description': 'Followers of the Dark Gods'});
+      final orderIdDeath = await db.insert('orders', {'name': 'Death', 'description': 'Armies of the Undead and Necromancers'});
+      final orderIdDestruction = await db.insert('orders', {'name': 'Destruction', 'description': 'Brutal and warlike hordes'});
+
+      await db.execute('''
+        INSERT INTO factions (id, name, order_id, description)
+        SELECT id, name, ?, description FROM factions_old
+      ''', [orderIdOrder]);
+      await db.execute('DROP TABLE factions_old');
+    }
+    
+    // *** NOUVELLE LOGIQUE DE MIGRATION POUR LA VERSION 3 ***
+    if (oldVersion < 3) {
+      print('Migrating DB from version $oldVersion to 3 (adding image_url)');
+      // Ajouter la colonne 'image_url' à la table 'orders'
+      await db.execute('ALTER TABLE orders ADD COLUMN image_url TEXT');
+      // Ajouter la colonne 'image_url' à la table 'factions'
+      await db.execute('ALTER TABLE factions ADD COLUMN image_url TEXT');
+      print('Added image_url column to orders and factions tables.');
+    }
+    // Ajoutez d'autres blocs 'if (oldVersion < X)' pour les futures migrations
   }
 
-  // --- Méthodes CRUD pour chaque table (exemples) ---
+  // --- NOUVELLE MÉTHODE : Orders ---
+  Future<int> insertOrder(Map<String, dynamic> order) async {
+    final db = await database;
+    return await db.insert('orders', order, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
 
-  // Factions
+  Future<List<Map<String, dynamic>>> getOrders() async {
+    final db = await database;
+    return await db.query('orders', orderBy: 'name');
+  }
+
+  // --- Factions (méthodes inchangées, mais gèrent maintenant 'order_id' et 'image_url') ---
   Future<int> insertFaction(Map<String, dynamic> faction) async {
     final db = await database;
     return await db.insert('factions', faction, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -157,7 +216,7 @@ class DatabaseHelper {
     return await db.query('factions');
   }
 
-  // Units
+  // --- Units (méthodes inchangées) ---
   Future<int> insertUnit(Map<String, dynamic> unit) async {
     final db = await database;
     return await db.insert('units', unit, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -181,7 +240,7 @@ class DatabaseHelper {
     return null;
   }
 
-  // Keywords
+  // --- Keywords ---
   Future<int> insertKeyword(Map<String, dynamic> keyword) async {
     final db = await database;
     return await db.insert('keywords', keyword, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -202,7 +261,7 @@ class DatabaseHelper {
     );
   }
 
-  // Abilities
+  // --- Abilities ---
   Future<int> insertAbility(Map<String, dynamic> ability) async {
     final db = await database;
     return await db.insert('abilities', ability, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -214,7 +273,7 @@ class DatabaseHelper {
     return await db.insert('unit_abilities', {'unit_id': unitId, 'ability_id': abilityId});
   }
 
-  // Weapons
+  // --- Weapons ---
   Future<int> insertWeapon(Map<String, dynamic> weapon) async {
     final db = await database;
     return await db.insert('weapons', weapon, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -226,7 +285,7 @@ class DatabaseHelper {
     return await db.insert('unit_weapons', {'unit_id': unitId, 'weapon_id': weaponId});
   }
 
-  // MyCollection
+  // --- MyCollection ---
   Future<int> insertMyCollectionItem(Map<String, dynamic> item) async {
     final db = await database;
     return await db.insert('my_collection', item, conflictAlgorithm: ConflictAlgorithm.replace);

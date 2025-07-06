@@ -1,15 +1,13 @@
-// lib/models/faction.dart
-class Faction {
+// lib/models/order.dart
+class Order {
   int? id;
   String name;
-  int orderId;
   String? description;
   String? imageUrl; // Nouvelle propriété
 
-  Faction({
+  Order({
     this.id,
     required this.name,
-    required this.orderId,
     this.description,
     this.imageUrl, // Incluez-le dans le constructeur
   });
@@ -18,17 +16,15 @@ class Faction {
     return {
       'id': id,
       'name': name,
-      'order_id': orderId,
       'description': description,
       'image_url': imageUrl, // Ajout pour la conversion vers Map
     };
   }
 
-  factory Faction.fromMap(Map<String, dynamic> map) {
-    return Faction(
+  factory Order.fromMap(Map<String, dynamic> map) {
+    return Order(
       id: map['id'],
       name: map['name'],
-      orderId: map['order_id'],
       description: map['description'],
       imageUrl: map['image_url'], // Lecture depuis Map
     );
@@ -36,6 +32,6 @@ class Faction {
 
   @override
   String toString() {
-    return 'Faction{id: $id, name: $name, orderId: $orderId, imageUrl: $imageUrl}';
+    return 'Order{id: $id, name: $name, imageUrl: $imageUrl}';
   }
 }
