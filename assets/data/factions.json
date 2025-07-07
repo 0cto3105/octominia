@@ -1,0 +1,178 @@
+[
+  {
+    "uuid": "s1t2o3r4-m5c6-7890-1234-567890abcdef",
+    "name": "Stormcast Eternals",
+    "order_uuid": "2a3b4c5d-6e7f-8901-2345-67890abcdef0",
+    "description": "Les guerriers célestes de Sigmar, des immortels ressuscités pour défendre les Royaumes Mortels.",
+    "image_url": "assets/images/factions/faction_stormcast_eternals.jpg"
+  },
+  {
+    "uuid": "s1y2l3v4-a5n6-7890-1234-567890fedcba",
+    "name": "Sylvaneth",
+    "order_uuid": "2a3b4c5d-6e7f-8901-2345-67890abcdef0",
+    "description": "Les esprits de la forêt d'Alarielle, protecteurs féroces de la nature contre la corruption.",
+    "image_url": "assets/images/factions/faction_sylvaneth.jpg"
+  },
+  {
+    "uuid": "d1a2u3g4-h5t6-7890-1234-567890123456",
+    "name": "Daughters of Khaine",
+    "order_uuid": "2a3b4c5d-6e7f-8901-2345-67890abcdef0",
+    "description": "Des fanatiques adoratrices de Khaine, le dieu du meurtre, menées par Morathi.",
+    "image_url": "assets/images/factions/faction_daughters_of_khaine.jpg"
+  },
+  {
+    "uuid": "c1i2t3i4-e5s6-7890-1234-567890fedcba",
+    "name": "Cities of Sigmar",
+    "order_uuid": "2a3b4c5d-6e7f-8901-2345-67890abcdef0",
+    "description": "Les défenseurs mortels des cités bâties par Sigmar, un assemblage de diverses races.",
+    "image_url": "assets/images/factions/faction_cities_of_sigmar.jpg"
+  },
+  {
+    "uuid": "s1e2r3a4-p5h6-7890-1234-567890abcdef",
+    "name": "Seraphon",
+    "order_uuid": "2a3b4c5d-6e7f-8901-2345-67890abcdef0",
+    "description": "Les anciens Sauriens et Slanns, des créatures qui obéissent aux volontés des Dieux Anciens.",
+    "image_url": "assets/images/factions/faction_seraphon.jpg"
+  },
+  {
+    "uuid": "f1y2r3e4-s5l6-7890-1234-567890123456",
+    "name": "Fyreslayers",
+    "order_uuid": "2a3b4c5d-6e7f-8901-2345-67890abcdef0",
+    "description": "Des Duardins mercenaires barbares, cherchant de l'Ur-Gold pour libérer leur dieu Vulkan.",
+    "image_url": "assets/images/factions/faction_fyreslayers.jpg"
+  },
+  {
+    "uuid": "l1u2m3i4-n5e6-7890-1234-567890fedcba",
+    "name": "Lumineth Realm-lords",
+    "order_uuid": "2a3b4c5d-6e7f-8901-2345-67890abcdef0",
+    "description": "Les Aelfs les plus nobles et les plus sages, maîtres de la magie et de la discipline.",
+    "image_url": "assets/images/factions/faction_lumineth_realm_lords.jpg"
+  },
+  {
+    "uuid": "i1d2o3n4-e5t6-7890-1234-567890abcdef",
+    "name": "Idoneth Deepkin",
+    "order_uuid": "2a3b4c5d-6e7f-8901-2345-67890abcdef0",
+    "description": "Des Aelfs marins qui volent les âmes des créatures terrestres pour survivre.",
+    "image_url": "assets/images/factions/faction_idoneth_deepkin.jpg"
+  },
+  {
+    "uuid": "k1h2a3r4-a5d6-7890-1234-567890123456",
+    "name": "Kharadron Overlords",
+    "order_uuid": "2a3b4c5d-6e7f-8901-2345-67890abcdef0",
+    "description": "Des Duardins navigateurs et marchands, équipés de machines volantes à vapeur et d'armes à poudre.",
+    "image_url": "assets/images/factions/faction_kharadron_overlords.jpg"
+  },
+
+
+
+
+
+
+
+  {
+    "uuid": "l1a2v3e4-s5t6-7890-1234-567890123456",
+    "name": "Slaves to Darkness",
+    "order_uuid": "f0e9d8c7-b6a5-4321-fedc-ba9876543210",
+    "description": "Les légions des mortels dévoués aux Dieux Sombres du Chaos, cherchant la gloire et la destruction.",
+    "image_url": "assets/images/factions/faction_slaves_to_darkness.jpg"
+  },
+  {
+    "uuid": "s1k2a3v4-e5n6-7890-1234-567890fedcba",
+    "name": "Skaven",
+    "order_uuid": "f0e9d8c7-b6a5-4321-fedc-ba9876543210",
+    "description": "Les hordes innombrables d'hommes-rats, obsédées par la dominance, la propagation et le Warpstone.",
+    "image_url": "assets/images/factions/faction_skaven.jpg"
+  },
+  {
+    "uuid": "d1i2s3c4-i5p6-7890-1234-567890abcdef",
+    "name": "Disciples of Tzeentch",
+    "order_uuid": "f0e9d8c7-b6a5-4321-fedc-ba9876543210",
+    "description": "Les adeptes du Changement, manipulant la magie et les destins des mortels et des dieux.",
+    "image_url": "assets/images/factions/faction_disciples_of_tzeentch.jpg"
+  },
+  {
+    "uuid": "h1e2d3o4-n5i6-7890-1234-567890123456",
+    "name": "Hedonites of Slaanesh",
+    "order_uuid": "f0e9d8c7-b6a5-4321-fedc-ba9876543210",
+    "description": "Les cultistes et démons du Dieu du Plaisir, cherchant l'extase ultime à travers le péché et la décadence.",
+    "image_url": "assets/images/factions/faction_hedonites_of_slaanesh.jpg"
+  },
+  {
+    "uuid": "m1a2g3g4-o5t6-7890-1234-567890fedcba",
+    "name": "Maggotkin of Nurgle",
+    "order_uuid": "f0e9d8c7-b6a5-4321-fedc-ba9876543210",
+    "description": "Les serviteurs du Dieu de la Peste, répandant maladies et désespoir, mais offrant une forme perverse de joie.",
+    "image_url": "assets/images/factions/faction_maggotkin_of_nurgle.jpg"
+  },
+  {
+    "uuid": "b1l2a3d4-e5s6-7890-1234-567890abcdef",
+    "name": "Blades of Khorne",
+    "order_uuid": "f0e9d8c7-b6a5-4321-fedc-ba9876543210",
+    "description": "Les armées assoiffées de sang du Dieu du Sang, cherchant crânes et sang pour leur maître.",
+    "image_url": "assets/images/factions/faction_blades_of_khorne.jpg"
+  },
+
+
+
+
+  {
+    "uuid": "s1o2u3l4-b5l6-7890-1234-567890abcdef",
+    "name": "Soulblight Gravelords",
+    "order_uuid": "1b2c3d4e-5f6a-789b-cdef-0123456789ab",
+    "description": "Les seigneurs vampires et leurs légions de morts-vivants, des nobles assoiffés de sang et leurs serviteurs.",
+    "image_url": "assets/images/factions/faction_soulblight_gravelords.jpg"
+  },
+  {
+    "uuid": "n1i2g3h4-t5h6-7890-1234-567890fedcba",
+    "name": "Nighthaunt",
+    "order_uuid": "1b2c3d4e-5f6a-789b-cdef-0123456789ab",
+    "description": "Les armées éthérées et tourmentées des fantômes et des esprits vengeurs, menées par la Reine des Lamentations.",
+    "image_url": "assets/images/factions/faction_nighthaunt.jpg"
+  },
+  {
+    "uuid": "o1s2s3i4-a5r6-7890-1234-567890123456",
+    "name": "Ossiarch Bonereapers",
+    "order_uuid": "1b2c3d4e-5f6a-789b-cdef-0123456789ab",
+    "description": "Les constructions osseuses de Nagash, des légions disciplinées et implacables composées d'ossements.",
+    "image_url": "assets/images/factions/faction_ossiarch_bonereapers.jpg"
+  },
+  {
+    "uuid": "f1l2e3s4-h5e6-7890-1234-567890abcdef",
+    "name": "Flesh-eater Courts",
+    "order_uuid": "1b2c3d4e-5f6a-789b-cdef-0123456789ab",
+    "description": "Des goules démentes qui se croient des nobles chevaliers, menant des hordes de créatures mort-vivantes grotesques.",
+    "image_url": "assets/images/factions/faction_flesh_eater_courts.jpg"
+  },
+
+
+
+
+  {
+    "uuid": "o1r2r3u4-k5w6-7890-1234-567890abcdef",
+    "name": "Orruk Warclans",
+    "order_uuid": "3c4d5e6f-7a8b-9012-3456-7890abcdef12",
+    "description": "Les hordes brutales d'Orruks, comprenant les Ironjawz, les Bonesplitterz et les Kruleboyz.",
+    "image_url": "assets/images/factions/faction_orruk_warclans.jpg"
+  },
+  {
+    "uuid": "g1l2o3o4-m5s6-7890-1234-567890fedcba",
+    "name": "Gloomspite Gitz",
+    "order_uuid": "3c4d5e6f-7a8b-9012-3456-7890abcdef12",
+    "description": "Les tribus de Grots, de Squigs, de Trolls et de Spiders, unis sous la bannière de la Lune Crochue.",
+    "image_url": "assets/images/factions/faction_gloomspite_gitz.jpg"
+  },
+  {
+    "uuid": "o1g2o3r4-m5a6-7890-1234-567890123456",
+    "name": "Ogor Mawtribes",
+    "order_uuid": "3c4d5e6f-7a8b-9012-3456-7890abcdef12",
+    "description": "Des géants affamés et leurs bêtes de guerre massives, cherchant à dévorer tout sur leur passage.",
+    "image_url": "assets/images/factions/faction_ogor_mawtribes.jpg"
+  },
+  {
+    "uuid": "s1o2n3s4-o5f6-7890-1234-567890abcdef",
+    "name": "Sons of Behemat",
+    "order_uuid": "3c4d5e6f-7a8b-9012-3456-7890abcdef12",
+    "description": "Les descendants colossaux du Titan Behemat, des géants massifs qui détruisent tout sur leur chemin.",
+    "image_url": "assets/images/factions/faction_sons_of_behemat.jpg"
+  }
+]
