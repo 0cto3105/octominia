@@ -34,6 +34,8 @@ dependencies:
   sqflite: ^2.3.0 # Dernière version au 5 juil. 2025
   path_provider: ^2.1.1 # Dernière version au 5 juil. 2025
   sqflite_common_ffi: ^2.3.0+1
+  intl: ^0.18.1
+  uuid: ^4.3.3
 
 dev_dependencies:
   flutter_test:

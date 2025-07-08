@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:octominia/database/database_helper.dart';
 import 'package:octominia/screens/collection_screen.dart';
 import 'package:octominia/screens/dashboard_screen.dart';
+import 'package:octominia/screens/games_screen.dart'; // Importez le GamesScreen
 
 import 'dart:io' show Platform;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -11,6 +12,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialisation de sqflite_common_ffi pour le bureau
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
@@ -21,6 +23,7 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  // Initialisation de la base de données et synchronisation
   await DatabaseHelper().database;
   await DatabaseHelper().synchronizeGameData();
 
@@ -50,7 +53,7 @@ class MyApp extends StatelessWidget {
           backgroundColor: Colors.grey[800],
           foregroundColor: Colors.white,
           titleTextStyle: const TextStyle(
-            color: Colors.black,
+            color: Colors.white, // Changed to white for dark theme visibility
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
@@ -95,14 +98,13 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0; // Index de l'onglet sélectionné (0 correspondra au Dashboard)
+  int _selectedIndex = 0; // Index de l'onglet sélectionné
   final PageStorageBucket _bucket = PageStorageBucket(); // Pour préserver l'état de défilement
 
   // Déclarez une GlobalKey pour votre DashboardScreen
   final GlobalKey<DashboardScreenState> _dashboardKey = GlobalKey();
 
-  // LISTE DES ÉCRANS : INVERSÉ L'ORDRE
-  // Passez la GlobalKey au DashboardScreen
+  // LISTE DES ÉCRANS
   late final List<Widget> _screens;
 
   @override
@@ -110,6 +112,7 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _screens = [
       DashboardScreen(key: _dashboardKey), // Associez la GlobalKey
+      const GamesScreen(), // Le nouvel écran des parties
       const CollectionScreen(),
     ];
   }
@@ -119,9 +122,8 @@ class _MainScreenState extends State<MainScreen> {
       _selectedIndex = index;
     });
 
-    // Si l'onglet sélectionné est le Dashboard, déclenchez son rafraîchissement
+    // Si l'onglet sélectionné est le Dashboard (index 0), déclenchez son rafraîchissement
     if (index == 0) {
-      // Vérifiez que la key est attachée et que l'état existe
       _dashboardKey.currentState?.refreshData();
     }
   }
@@ -143,16 +145,29 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Dashboard',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.videogame_asset), // Icône pour les jeux
+            label: 'Games',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.inventory_2_outlined),
             label: 'Collection',
           ),
+          // Vous pouvez ajouter d'autres onglets ici si nécessaire (ex: Stats, Profile)
+          // BottomNavigationBarItem(
+          //   icon: Icon(Icons.bar_chart),
+          //   label: 'Stats',
+          // ),
+          // BottomNavigationBarItem(
+          //   icon: Icon(Icons.person),
+          //   label: 'Profile',
+          // ),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Theme.of(context).colorScheme.secondary,
         unselectedItemColor: Colors.white70,
         onTap: _onItemTapped,
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        type: BottomNavigationBarType.fixed,
+        type: BottomNavigationBarType.fixed, // Utilisez fixed si vous avez plus de 3 éléments
       ),
     );
   }

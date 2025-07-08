@@ -11,6 +11,7 @@ import 'package:octominia/models/keyword.dart';
 import 'package:octominia/models/ability.dart';
 import 'package:octominia/models/weapon.dart';
 import 'package:octominia/models/my_collection_item.dart';
+// import 'package:octominia/models/game.dart'; // <-- Supprimez cet import
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -36,7 +37,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4, // Assurez-vous que c'est au moins 4 pour que _onUpgrade soit appelé si la version précédente était < 4
+      version: 4, // <-- Revertir la version à 4 si la table 'games' était la seule raison de la version 5
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -156,6 +157,28 @@ class DatabaseHelper {
         FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE
       )
     ''');
+
+    // <-- Supprimez la création de la table 'games' ici
+    /*
+    await db.execute('''
+      CREATE TABLE games(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        myPlayerName TEXT NOT NULL,
+        myFactionName TEXT NOT NULL,
+        mySubFactionName TEXT,
+        myFactionImageUrl TEXT,
+        myScore INTEGER NOT NULL,
+        opponentScore INTEGER NOT NULL,
+        opponentPlayerName TEXT NOT NULL,
+        opponentFactionName TEXT NOT NULL,
+        opponentSubFactionName TEXT,
+        opponentFactionImageUrl TEXT,
+        result TEXT NOT NULL,
+        notes TEXT
+      )
+    ''');
+    */
   }
 
   @override
@@ -200,10 +223,38 @@ class DatabaseHelper {
       await db.execute('DROP TABLE IF EXISTS units');
       await db.execute('DROP TABLE IF EXISTS factions');
       await db.execute('DROP TABLE IF EXISTS orders');
+      // <-- Supprimez la suppression de la table 'games' ici si elle était présente
+      // await db.execute('DROP TABLE IF EXISTS games');
 
       await _createAllTables(db); // Appelle la méthode qui contient le nouveau schéma
       print('Tables recréées avec le schéma de la version 4.');
     }
+
+    // <-- Supprimez la migration pour la version 5 (ajout de la table 'games')
+    /*
+    if (oldVersion < 5) {
+      print('Migrating DB from version $oldVersion to 5 (adding games table)');
+      await db.execute('''
+        CREATE TABLE games(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL,
+          myPlayerName TEXT NOT NULL,
+          myFactionName TEXT NOT NULL,
+          mySubFactionName TEXT,
+          myFactionImageUrl TEXT,
+          myScore INTEGER NOT NULL,
+          opponentScore INTEGER NOT NULL,
+          opponentPlayerName TEXT NOT NULL,
+          opponentFactionName TEXT NOT NULL,
+          opponentSubFactionName TEXT,
+          opponentFactionImageUrl TEXT,
+          result TEXT NOT NULL,
+          notes TEXT
+        )
+      ''');
+      print('Table games créée pour la version 5.');
+    }
+    */
   }
 
   Future<void> deleteAllData() async {
@@ -218,7 +269,8 @@ class DatabaseHelper {
     await db.delete('weapons');
     await db.delete('unit_weapons');
     await db.delete('my_collection');
-    print("Toutes les données ont été supprimées des tables.");
+    // await db.delete('games'); // <-- Supprimez la suppression des données de la table games
+    print("Toutes les données ont été supprimées des tables (sauf games).");
   }
 
   Future<void> synchronizeGameData() async {
@@ -441,15 +493,13 @@ class DatabaseHelper {
     return await db.insert('my_collection', item, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  // Correction: La méthode updateMyCollectionItem doit être mise à jour pour utiliser unit_id et non id
-  // La signature a été changée pour accepter Map<String, dynamic> pour la cohérence
   Future<int> updateMyCollectionItem(Map<String, dynamic> itemMap) async {
     final db = await database;
     return await db.update(
       'my_collection',
       itemMap,
-      where: 'unit_id = ?', // Utilise 'unit_id' qui est UNIQUE dans votre schéma
-      whereArgs: [itemMap['unit_id']], // Accède à 'unit_id' depuis le Map fourni
+      where: 'unit_id = ?',
+      whereArgs: [itemMap['unit_id']],
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
@@ -463,8 +513,10 @@ class DatabaseHelper {
     final db = await database;
     return await db.delete(
       'my_collection',
-      where: 'id = ?', // Ici, on utilise 'id' si c'est la clé primaire de la table my_collection pour la suppression
+      where: 'id = ?',
       whereArgs: [id],
     );
   }
+
+  // --- Les méthodes pour la table Games ont été supprimées, car elles sont maintenant gérées par GameJsonStorage ---
 }

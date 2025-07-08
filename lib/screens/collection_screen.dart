@@ -1,4 +1,3 @@
-// lib/screens/collection_screen.dart
 import 'package:flutter/material.dart';
 import 'package:octominia/database/database_helper.dart';
 import 'package:octominia/models/order.dart';
@@ -32,8 +31,6 @@ class _CollectionScreenState extends State<CollectionScreen> with WidgetsBinding
   @override
   void initState() {
     super.initState();
-    // Gardez l'observateur pour d'autres usages futurs du cycle de vie de l'application
-    // même si pour cette navigation spécifique, nous utiliserons une autre méthode.
     WidgetsBinding.instance.addObserver(this);
     _loadCollectionData();
   }
@@ -47,12 +44,9 @@ class _CollectionScreenState extends State<CollectionScreen> with WidgetsBinding
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    print('AppLifecycleState changed: $state'); // Gardez ce print pour le débogage général du cycle de vie
+    print('AppLifecycleState changed: $state');
     if (state == AppLifecycleState.resumed) {
-      // Ce bloc ne sera probablement toujours pas appelé pour le retour d'un Navigator.push
-      // mais il est correct de le garder pour une reprise de l'application depuis le fond.
       print('App resumed: Reloading collection data. (via Lifecycle Observer)');
-      // _loadCollectionData(); // Ne pas l'appeler ici pour éviter les doubles rechargements si la méthode via Navigator.pop est utilisée
     }
   }
 
@@ -180,7 +174,7 @@ class _CollectionScreenState extends State<CollectionScreen> with WidgetsBinding
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.remove, color: Colors.white, size: 16), // CHANGEMENT ICI : Icons.remove
+                  const Icon(Icons.sell, color: Colors.white, size: 16), // CHANGEMENT ICI : Icons.sell
                   const SizedBox(width: 4),
                   Text(
                     '$toSellQty',
@@ -216,7 +210,7 @@ class _CollectionScreenState extends State<CollectionScreen> with WidgetsBinding
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.add, color: Colors.white, size: 16), // CHANGEMENT ICI : Icons.add
+                  const Icon(Icons.shopping_cart, color: Colors.white, size: 16), // CHANGEMENT ICI : Icons.shopping_cart
                   const SizedBox(width: 4),
                   Text(
                     '$toBuyQty',
@@ -234,7 +228,6 @@ class _CollectionScreenState extends State<CollectionScreen> with WidgetsBinding
     );
   }
 
-  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -278,14 +271,13 @@ class _CollectionScreenState extends State<CollectionScreen> with WidgetsBinding
                               isOrder: false,
                               margin: const EdgeInsets.only(bottom: 8.0),
                               borderRadius: BorderRadius.circular(12.0),
-                              onHeaderTap: () async { // MODIFICATION ICI : AJOUT DE 'async'
-                                await Navigator.push( // MODIFICATION ICI : AJOUT DE 'await'
+                              onHeaderTap: () async {
+                                await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => FactionUnitsScreen(faction: faction),
                                   ),
                                 );
-                                // MODIFICATION ICI : APPEL DE _loadCollectionData() APRÈS LE RETOUR
                                 await _loadCollectionData();
                                 print('Retour de FactionUnitsScreen: Données de collection rechargées.');
                               },
