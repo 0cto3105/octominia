@@ -1,4 +1,3 @@
-// lib/database/database_helper.dart
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:sqflite/sqflite.dart';
@@ -411,9 +410,13 @@ class DatabaseHelper {
     return await db.insert('factions', faction, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<List<Map<String, dynamic>>> getFactions() async {
+  // MODIFICATION ICI: Changer le type de retour et mapper les Maps aux objets Faction
+  Future<List<Faction>> getFactions() async {
     final db = await database;
-    return await db.query('factions');
+    final List<Map<String, dynamic>> maps = await db.query('factions');
+    return List.generate(maps.length, (i) {
+      return Faction.fromMap(maps[i]);
+    });
   }
 
   Future<int> insertUnit(Map<String, dynamic> unit) async {

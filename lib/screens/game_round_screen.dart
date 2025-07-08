@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:octominia/models/game.dart';
 import 'package:octominia/models/round.dart';
+import 'package:flutter/scheduler.dart'; // Import this for WidgetsBinding
 
 class GameRoundScreen extends StatefulWidget {
   final int roundNumber;
@@ -31,250 +32,165 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     _myPlayerName = widget.game.myPlayerName;
     _opponentPlayerName = widget.game.opponentPlayerName;
 
-    // Assurez-vous que _currentRound est une COPIE pour éviter les modifications directes
-    // de l'objet Game parent si on ne veut pas qu'elles soient persistantes avant onUpdateRound.
-    // Cependant, pour l'approche StatefulWidget, modifier _currentRound localement
-    // puis appeler onUpdateRound pour propager est une bonne pratique.
-    // Le Game contient déjà 3 rounds initialisés dans AddGameScreen, donc nous les trouvons.
-    int roundIndex = widget.roundNumber - 1;
-    if (widget.game.rounds.length > roundIndex) {
-      _currentRound = widget.game.rounds[roundIndex];
+    // Find the current round
+    final existingRound = widget.game.rounds.firstWhere(
+      (round) => round.roundNumber == widget.roundNumber,
+      orElse: () => null as Round, // Cast to Round? explicitly for null safety
+    );
+
+    if (existingRound != null) {
+      _currentRound = existingRound;
     } else {
-      // Ceci ne devrait pas arriver si AddGameScreen initialise toujours 3 rounds.
-      // Mais pour la robustesse, on crée un Round vide.
-      _currentRound = Round(
+      // If the round doesn't exist, create a new one
+      final newRound = Round(
         roundNumber: widget.roundNumber,
         myScore: 0,
         opponentScore: 0,
         priorityPlayerId: null,
+        myQuest1_1Completed: false,
+        myQuest1_2Completed: false,
+        myQuest1_3Completed: false,
+        myQuest2_1Completed: false,
+        myQuest2_2Completed: false,
+        myQuest2_3Completed: false,
+        opponentQuest1_1Completed: false,
+        opponentQuest1_2Completed: false,
+        opponentQuest1_3Completed: false,
+        opponentQuest2_1Completed: false,
+        opponentQuest2_2Completed: false,
+        opponentQuest2_3Completed: false,
       );
+      _currentRound = newRound; // Assign the newly created round
+
+      // Defer the call to onUpdateRound until after the current frame
+      // This prevents calling setState on the parent during its build phase.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) { // Ensure the widget is still mounted before calling the callback
+          widget.onUpdateRound(newRound);
+        }
+      });
     }
   }
 
-  // Met à jour le Round actuel et informe le parent (AddGameScreen)
-  void _updateCurrentRoundAndNotifyParent() {
-    widget.onUpdateRound(_currentRound);
-    setState(() {}); // Force rebuild to reflect changes
-  }
-
-  void _updatePriority(String? playerId) {
-    _currentRound.priorityPlayerId = playerId;
-    _updateCurrentRoundAndNotifyParent();
-  }
-
-  void _updatePrimaryScore(int? value, bool isMyPlayer) {
-    if (value != null) {
-      if (isMyPlayer) {
-        _currentRound.myScore = value;
-      } else {
-        _currentRound.opponentScore = value;
-      }
-      _updateCurrentRoundAndNotifyParent();
-    }
-  }
-
-  // Nouvelle fonction pour gérer la mise à jour des quêtes avec leur logique séquentielle
-  void _updateQuestStatus(
-    bool? value,
-    bool isMyPlayer,
-    int suiteNumber,
-    int questNumber,
-  ) {
-    bool canUpdate = value ?? false; // True if attempting to check, false if attempting to uncheck
-
+  void _updateRoundLocally(Round updatedRound) {
     setState(() {
-      if (isMyPlayer) {
-        if (suiteNumber == 1) {
-          if (questNumber == 1) {
-            _currentRound.myQuest1_1Completed = canUpdate;
-            if (!canUpdate) { // Si on décoche la Q1, décocher aussi Q2 et Q3
-              _currentRound.myQuest1_2Completed = false;
-              _currentRound.myQuest1_3Completed = false;
-            }
-          } else if (questNumber == 2) {
-            if (canUpdate && !_currentRound.myQuest1_1Completed) { // Ne peut cocher Q2 que si Q1 est cochée
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Veuillez d\'abord valider la Quête 1 de la Suite 1.')),
-              );
-              canUpdate = false; // Empêche de cocher
-            }
-            _currentRound.myQuest1_2Completed = canUpdate;
-            if (!canUpdate) { // Si on décoche Q2, décocher aussi Q3
-              _currentRound.myQuest1_3Completed = false;
-            }
-          } else if (questNumber == 3) {
-            if (canUpdate && !_currentRound.myQuest1_2Completed) { // Ne peut cocher Q3 que si Q2 est cochée
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Veuillez d\'abord valider la Quête 2 de la Suite 1.')),
-              );
-              canUpdate = false; // Empêche de cocher
-            }
-            _currentRound.myQuest1_3Completed = canUpdate;
-          }
-        } else if (suiteNumber == 2) {
-          if (questNumber == 1) {
-            _currentRound.myQuest2_1Completed = canUpdate;
-            if (!canUpdate) {
-              _currentRound.myQuest2_2Completed = false;
-              _currentRound.myQuest2_3Completed = false;
-            }
-          } else if (questNumber == 2) {
-            if (canUpdate && !_currentRound.myQuest2_1Completed) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Veuillez d\'abord valider la Quête 1 de la Suite 2.')),
-              );
-              canUpdate = false;
-            }
-            _currentRound.myQuest2_2Completed = canUpdate;
-            if (!canUpdate) {
-              _currentRound.myQuest2_3Completed = false;
-            }
-          } else if (questNumber == 3) {
-            if (canUpdate && !_currentRound.myQuest2_2Completed) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Veuillez d\'abord valider la Quête 2 de la Suite 2.')),
-              );
-              canUpdate = false;
-            }
-            _currentRound.myQuest2_3Completed = canUpdate;
-          }
-        }
-      } else { // Opponent's quests
-        if (suiteNumber == 1) {
-          if (questNumber == 1) {
-            _currentRound.opponentQuest1_1Completed = canUpdate;
-            if (!canUpdate) {
-              _currentRound.opponentQuest1_2Completed = false;
-              _currentRound.opponentQuest1_3Completed = false;
-            }
-          } else if (questNumber == 2) {
-            if (canUpdate && !_currentRound.opponentQuest1_1Completed) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Veuillez d\'abord valider la Quête 1 de la Suite 1 de l\'adversaire.')),
-              );
-              canUpdate = false;
-            }
-            _currentRound.opponentQuest1_2Completed = canUpdate;
-            if (!canUpdate) {
-              _currentRound.opponentQuest1_3Completed = false;
-            }
-          } else if (questNumber == 3) {
-            if (canUpdate && !_currentRound.opponentQuest1_2Completed) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Veuillez d\'abord valider la Quête 2 de la Suite 1 de l\'adversaire.')),
-              );
-              canUpdate = false;
-            }
-            _currentRound.opponentQuest1_3Completed = canUpdate;
-          }
-        } else if (suiteNumber == 2) {
-          if (questNumber == 1) {
-            _currentRound.opponentQuest2_1Completed = canUpdate;
-            if (!canUpdate) {
-              _currentRound.opponentQuest2_2Completed = false;
-              _currentRound.opponentQuest2_3Completed = false;
-            }
-          } else if (questNumber == 2) {
-            if (canUpdate && !_currentRound.opponentQuest2_1Completed) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Veuillez d\'abord valider la Quête 1 de la Suite 2 de l\'adversaire.')),
-              );
-              canUpdate = false;
-            }
-            _currentRound.opponentQuest2_2Completed = canUpdate;
-            if (!canUpdate) {
-              _currentRound.opponentQuest2_3Completed = false;
-            }
-          } else if (questNumber == 3) {
-            if (canUpdate && !_currentRound.opponentQuest2_2Completed) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Veuillez d\'abord valider la Quête 2 de la Suite 2 de l\'adversaire.')),
-              );
-              canUpdate = false;
-            }
-            _currentRound.opponentQuest2_3Completed = canUpdate;
-          }
-        }
-      }
-      _updateCurrentRoundAndNotifyParent();
+      _currentRound = updatedRound;
     });
+    // Propagate changes to parent after local state is updated
+    widget.onUpdateRound(_currentRound);
   }
 
-  // Helper function to build the priority selection buttons (unchanged, as per previous fix)
+  void _updatePriority(String? playerKey) {
+    _updateRoundLocally(_currentRound.copyWith(priorityPlayerId: playerKey));
+  }
+
+  void _updatePrimaryScore(int newScore, bool isMyPlayer) {
+    _updateRoundLocally(isMyPlayer
+        ? _currentRound.copyWith(myScore: newScore)
+        : _currentRound.copyWith(opponentScore: newScore));
+  }
+
+  void _updateQuest(String questKey, bool value, bool isMyPlayer) {
+    Round updatedRound = _currentRound;
+    if (isMyPlayer) {
+      switch (questKey) {
+        case 'myQuest1_1Completed':
+          updatedRound = updatedRound.copyWith(myQuest1_1Completed: value);
+          break;
+        case 'myQuest1_2Completed':
+          updatedRound = updatedRound.copyWith(myQuest1_2Completed: value);
+          break;
+        case 'myQuest1_3Completed':
+          updatedRound = updatedRound.copyWith(myQuest1_3Completed: value);
+          break;
+        case 'myQuest2_1Completed':
+          updatedRound = updatedRound.copyWith(myQuest2_1Completed: value);
+          break;
+        case 'myQuest2_2Completed':
+          updatedRound = updatedRound.copyWith(myQuest2_2Completed: value);
+          break;
+        case 'myQuest2_3Completed':
+          updatedRound = updatedRound.copyWith(myQuest2_3Completed: value);
+          break;
+      }
+    } else {
+      switch (questKey) {
+        case 'opponentQuest1_1Completed':
+          updatedRound = updatedRound.copyWith(opponentQuest1_1Completed: value);
+          break;
+        case 'opponentQuest1_2Completed':
+          updatedRound = updatedRound.copyWith(opponentQuest1_2Completed: value);
+          break;
+        case 'opponentQuest1_3Completed':
+          updatedRound = updatedRound.copyWith(opponentQuest1_3Completed: value);
+          break;
+        case 'opponentQuest2_1Completed':
+          updatedRound = updatedRound.copyWith(opponentQuest2_1Completed: value);
+          break;
+        case 'opponentQuest2_2Completed':
+          updatedRound = updatedRound.copyWith(opponentQuest2_2Completed: value);
+          break;
+        case 'opponentQuest2_3Completed':
+          updatedRound = updatedRound.copyWith(opponentQuest2_3Completed: value);
+          break;
+      }
+    }
+    _updateRoundLocally(updatedRound);
+  }
+
+
+  Widget _buildSectionTitle(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        title,
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color),
+      ),
+    );
+  }
+
+  Widget _buildPlayerSelectionButton({
+    required String playerKey,
+    required String playerName,
+    required bool isSelected,
+    required Function(String) onSelect,
+  }) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+        child: ElevatedButton(
+          onPressed: () => onSelect(playerKey),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isSelected ? Theme.of(context).primaryColor : Theme.of(context).disabledColor,
+            foregroundColor: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            textStyle: const TextStyle(fontSize: 16),
+          ),
+          child: Text(playerName),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPrioritySelection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(
-            'Priorité du Tour ${widget.roundNumber}',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).textTheme.headlineSmall?.color,
-            ),
-          ),
-        ),
+        _buildSectionTitle(context, 'Priorité du Tour'),
+        const SizedBox(height: 10),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => _updatePriority('me'),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: _currentRound.priorityPlayerId == 'me'
-                      ? Theme.of(context).primaryColor // Selected color
-                      : Colors.transparent, // Not selected color
-                  side: BorderSide(
-                    color: Theme.of(context).primaryColor, // Border color
-                    width: _currentRound.priorityPlayerId == 'me' ? 2 : 1, // Thicker border when selected
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: Text(
-                  _myPlayerName,
-                  style: TextStyle(
-                    color: _currentRound.priorityPlayerId == 'me'
-                        ? Colors.white // Text color when selected
-                        : Theme.of(context).primaryColor, // Text color when not selected
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
+            _buildPlayerSelectionButton(
+              playerKey: 'me',
+              playerName: _myPlayerName,
+              isSelected: _currentRound.priorityPlayerId == 'me',
+              onSelect: _updatePriority,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => _updatePriority('opponent'),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: _currentRound.priorityPlayerId == 'opponent'
-                      ? Theme.of(context).primaryColor // Selected color
-                      : Colors.transparent, // Not selected color
-                  side: BorderSide(
-                    color: Theme.of(context).primaryColor, // Border color
-                    width: _currentRound.priorityPlayerId == 'opponent' ? 2 : 1, // Thicker border when selected
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: Text(
-                  _opponentPlayerName,
-                  style: TextStyle(
-                    color: _currentRound.priorityPlayerId == 'opponent'
-                        ? Colors.white // Text color when selected
-                        : Theme.of(context).primaryColor, // Text color when not selected
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
+            _buildPlayerSelectionButton(
+              playerKey: 'opponent',
+              playerName: _opponentPlayerName,
+              isSelected: _currentRound.priorityPlayerId == 'opponent',
+              onSelect: _updatePriority,
             ),
           ],
         ),
@@ -282,168 +198,92 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     );
   }
 
-  // Helper function for primary score selection
-  Widget _buildPrimaryScoreSelection(BuildContext context, String playerName, int currentPrimaryScore, bool isMyPlayer) {
-    List<int> scoreOptions = List.generate(11, (index) => index); // 0 to 10
-
+  Widget _buildPrimaryScoreSelection(BuildContext context, String playerName, int currentScore, bool isMyPlayer) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(
-            'Score Primaire de $playerName (0-10)',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).textTheme.headlineSmall?.color,
-            ),
-          ),
-        ),
-        Wrap(
-          spacing: 8.0,
-          runSpacing: 8.0,
-          children: scoreOptions.map((score) {
-            bool isSelected = currentPrimaryScore == score;
-            return ChoiceChip(
-              label: Text(score.toString()),
-              selected: isSelected,
-              selectedColor: Theme.of(context).primaryColor,
-              onSelected: (selected) {
-                if (selected) {
-                  _updatePrimaryScore(score, isMyPlayer);
-                }
-              },
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-              side: BorderSide(color: Theme.of(context).primaryColor),
-            );
-          }).toList(),
+        _buildSectionTitle(context, 'Score Primaire ($playerName)'),
+        Slider(
+          value: currentScore.toDouble(),
+          min: 0,
+          max: 10,
+          divisions: 10,
+          label: currentScore.toString(),
+          onChanged: (double value) {
+            _updatePrimaryScore(value.round(), isMyPlayer);
+          },
+          activeColor: Theme.of(context).primaryColor,
+          inactiveColor: Theme.of(context).primaryColor.withOpacity(0.3),
         ),
       ],
     );
   }
 
-  // Helper function to build a single quest checkbox with dependencies
-  Widget _buildQuestCheckbox({
-    required BuildContext context,
-    required String title,
-    required bool value,
-    required ValueChanged<bool?> onChanged,
-    required bool isEnabled,
-  }) {
-    return CheckboxListTile(
-      title: Text(
-        title,
-        style: TextStyle(
-          color: isEnabled ? Theme.of(context).textTheme.bodyMedium?.color : Colors.grey,
+  Widget _buildQuestCheckbox(String label, bool value, Function(bool) onChanged) {
+    return Row(
+      children: [
+        Checkbox(
+          value: value,
+          onChanged: (bool? newValue) {
+            onChanged(newValue ?? false);
+          },
+          checkColor: Colors.white,
+          activeColor: Theme.of(context).primaryColor,
         ),
-      ),
-      value: value,
-      onChanged: isEnabled ? onChanged : null, // Disable if not enabled
-      activeColor: Theme.of(context).primaryColor,
-      controlAffinity: ListTileControlAffinity.leading,
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+          ),
+        ),
+      ],
     );
   }
 
-  // Helper function to build quest sections for a player
   Widget _buildQuestSection(BuildContext context, String playerName, bool isMyPlayer) {
-    // Determine current quest completion status for the player
-    bool quest1_1 = isMyPlayer ? _currentRound.myQuest1_1Completed : _currentRound.opponentQuest1_1Completed;
-    bool quest1_2 = isMyPlayer ? _currentRound.myQuest1_2Completed : _currentRound.opponentQuest1_2Completed;
-    bool quest1_3 = isMyPlayer ? _currentRound.myQuest1_3Completed : _currentRound.opponentQuest1_3Completed;
-    bool quest2_1 = isMyPlayer ? _currentRound.myQuest2_1Completed : _currentRound.opponentQuest2_1Completed;
-    bool quest2_2 = isMyPlayer ? _currentRound.myQuest2_2Completed : _currentRound.opponentQuest2_2Completed;
-    bool quest2_3 = isMyPlayer ? _currentRound.myQuest2_3Completed : _currentRound.opponentQuest2_3Completed;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(
-            'Quêtes de $playerName (+5 points/quête)',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).textTheme.headlineSmall?.color,
-            ),
-          ),
-        ),
-        // Suite 1
-        Text(
-          'Suite 1',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).textTheme.bodyLarge?.color,
-          ),
+        _buildSectionTitle(context, 'Quêtes ($playerName)'),
+        _buildQuestCheckbox(
+          'Quête 1.1',
+          isMyPlayer ? _currentRound.myQuest1_1Completed : _currentRound.opponentQuest1_1Completed,
+          (newValue) => _updateQuest('myQuest1_1Completed', newValue, isMyPlayer),
         ),
         _buildQuestCheckbox(
-          context: context,
-          title: 'Quête 1.1',
-          value: quest1_1,
-          onChanged: (val) => _updateQuestStatus(val, isMyPlayer, 1, 1),
-          isEnabled: true, // Toujours enabled pour la première quête
+          'Quête 1.2',
+          isMyPlayer ? _currentRound.myQuest1_2Completed : _currentRound.opponentQuest1_2Completed,
+          (newValue) => _updateQuest('myQuest1_2Completed', newValue, isMyPlayer),
         ),
         _buildQuestCheckbox(
-          context: context,
-          title: 'Quête 1.2',
-          value: quest1_2,
-          onChanged: (val) => _updateQuestStatus(val, isMyPlayer, 1, 2),
-          isEnabled: quest1_1, // Enabled si Quête 1.1 est complétée
+          'Quête 1.3',
+          isMyPlayer ? _currentRound.myQuest1_3Completed : _currentRound.opponentQuest1_3Completed,
+          (newValue) => _updateQuest('myQuest1_3Completed', newValue, isMyPlayer),
         ),
         _buildQuestCheckbox(
-          context: context,
-          title: 'Quête 1.3',
-          value: quest1_3,
-          onChanged: (val) => _updateQuestStatus(val, isMyPlayer, 1, 3),
-          isEnabled: quest1_2, // Enabled si Quête 1.2 est complétée
-        ),
-        const SizedBox(height: 16),
-
-        // Suite 2
-        Text(
-          'Suite 2',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).textTheme.bodyLarge?.color,
-          ),
+          'Quête 2.1',
+          isMyPlayer ? _currentRound.myQuest2_1Completed : _currentRound.opponentQuest2_1Completed,
+          (newValue) => _updateQuest('myQuest2_1Completed', newValue, isMyPlayer),
         ),
         _buildQuestCheckbox(
-          context: context,
-          title: 'Quête 2.1',
-          value: quest2_1,
-          onChanged: (val) => _updateQuestStatus(val, isMyPlayer, 2, 1),
-          isEnabled: true, // Toujours enabled pour la première quête de la suite 2
+          'Quête 2.2',
+          isMyPlayer ? _currentRound.myQuest2_2Completed : _currentRound.opponentQuest2_2Completed,
+          (newValue) => _updateQuest('myQuest2_2Completed', newValue, isMyPlayer),
         ),
         _buildQuestCheckbox(
-          context: context,
-          title: 'Quête 2.2',
-          value: quest2_2,
-          onChanged: (val) => _updateQuestStatus(val, isMyPlayer, 2, 2),
-          isEnabled: quest2_1, // Enabled si Quête 2.1 est complétée
+          'Quête 2.3',
+          isMyPlayer ? _currentRound.myQuest2_3Completed : _currentRound.opponentQuest2_3Completed,
+          (newValue) => _updateQuest('myQuest2_3Completed', newValue, isMyPlayer),
         ),
-        _buildQuestCheckbox(
-          context: context,
-          title: 'Quête 2.3',
-          value: quest2_3,
-          onChanged: (val) => _updateQuestStatus(val, isMyPlayer, 2, 3),
-          isEnabled: quest2_2, // Enabled si Quête 2.2 est complétée
-        ),
-        const SizedBox(height: 24),
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Calcul des scores totaux actuels (incluant les tours précédents)
-    int myOverallTotalScore = widget.game.rounds.fold(0, (sum, round) => sum + round.calculatePlayerTotalScore(true));
-    int opponentOverallTotalScore = widget.game.rounds.fold(0, (sum, round) => sum + round.calculatePlayerTotalScore(false));
+    // Calculate overall total scores for display
+    int myOverallTotalScore = widget.game.myScore;
+    int opponentOverallTotalScore = widget.game.opponentScore;
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -476,6 +316,8 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
             // Section pour mon joueur
             _buildPrimaryScoreSelection(context, _myPlayerName, _currentRound.myScore, true),
             _buildQuestSection(context, _myPlayerName, true),
+
+            const SizedBox(height: 20), // Espace entre les sections joueur
 
             // Section pour l'adversaire
             _buildPrimaryScoreSelection(context, _opponentPlayerName, _currentRound.opponentScore, false),

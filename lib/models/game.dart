@@ -1,10 +1,10 @@
 // lib/models/game.dart
 
 import 'package:octominia/models/round.dart';
-import 'package:uuid/uuid.dart'; // Add this import
+import 'package:uuid/uuid.dart';
 
 class Game {
-  String id; // Added ID field
+  String id;
   DateTime date;
   String myPlayerName;
   String myFactionName;
@@ -26,7 +26,7 @@ class Game {
   String? notes;
 
   Game({
-    String? id, // Make id optional in constructor, will generate if null
+    String? id,
     required this.date,
     required this.myPlayerName,
     required this.myFactionName,
@@ -42,11 +42,30 @@ class Game {
     required this.opponentAuxiliaryUnits,
     this.attackerPlayerId,
     this.priorityPlayerIdRound1,
-    required this.rounds,
+    List<Round>? rounds,
     required this.result,
     required this.scoreOutOf20,
     this.notes,
-  }) : this.id = id ?? const Uuid().v4(); // Generate a new UUID if id is not provided
+  }) :
+    this.id = id ?? const Uuid().v4(),
+    this.rounds = rounds ?? List.generate(5, (index) => Round(
+        roundNumber: index + 1,
+        myScore: 0,
+        opponentScore: 0,
+        priorityPlayerId: null,
+        myQuest1_1Completed: false,
+        myQuest1_2Completed: false,
+        myQuest1_3Completed: false,
+        myQuest2_1Completed: false,
+        myQuest2_2Completed: false,
+        myQuest2_3Completed: false,
+        opponentQuest1_1Completed: false,
+        opponentQuest1_2Completed: false,
+        opponentQuest1_3Completed: false,
+        opponentQuest2_1Completed: false,
+        opponentQuest2_2Completed: false,
+        opponentQuest2_3Completed: false,
+      ));
 
   static String determineResult(int myTotalScore, int opponentTotalScore) {
     if (myTotalScore > opponentTotalScore) {
@@ -92,7 +111,7 @@ class Game {
     String? notes,
   }) {
     return Game(
-      id: id ?? this.id, // Copy ID as well
+      id: id ?? this.id,
       date: date ?? this.date,
       myPlayerName: myPlayerName ?? this.myPlayerName,
       myFactionName: myFactionName ?? this.myFactionName,
@@ -108,7 +127,7 @@ class Game {
       opponentAuxiliaryUnits: opponentAuxiliaryUnits ?? this.opponentAuxiliaryUnits,
       attackerPlayerId: attackerPlayerId ?? this.attackerPlayerId,
       priorityPlayerIdRound1: priorityPlayerIdRound1 ?? this.priorityPlayerIdRound1,
-      rounds: rounds ?? this.rounds,
+      rounds: rounds ?? this.rounds, // Ensure copyWith also uses the existing rounds or provided
       result: result ?? this.result,
       scoreOutOf20: scoreOutOf20 ?? this.scoreOutOf20,
       notes: notes ?? this.notes,
@@ -117,7 +136,7 @@ class Game {
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id, // Include ID in map
+      'id': id,
       'date': date.toIso8601String(),
       'myPlayerName': myPlayerName,
       'myFactionName': myFactionName,
@@ -142,18 +161,18 @@ class Game {
 
   factory Game.fromMap(Map<String, dynamic> map) {
     return Game(
-      id: map['id'] as String?, // Read ID, can be null for old data
+      id: map['id'] as String?,
       date: DateTime.parse(map['date'] as String),
       myPlayerName: map['myPlayerName'] as String,
       myFactionName: map['myFactionName'] as String,
       myFactionImageUrl: map['myFactionImageUrl'] as String?,
-      myScore: map['myScore'] as int? ?? 0, // Default to 0 for robustness
+      myScore: map['myScore'] as int? ?? 0,
       myDrops: map['myDrops'] as int? ?? 1,
       myAuxiliaryUnits: map['myAuxiliaryUnits'] as bool? ?? false,
       opponentPlayerName: map['opponentPlayerName'] as String,
       opponentFactionName: map['opponentFactionName'] as String,
       opponentFactionImageUrl: map['opponentFactionImageUrl'] as String?,
-      opponentScore: map['opponentScore'] as int? ?? 0, // Default to 0 for robustness
+      opponentScore: map['opponentScore'] as int? ?? 0,
       opponentDrops: map['opponentDrops'] as int? ?? 1,
       opponentAuxiliaryUnits: map['opponentAuxiliaryUnits'] as bool? ?? false,
       attackerPlayerId: map['attackerPlayerId'] as String?,
@@ -161,27 +180,26 @@ class Game {
        rounds: List<Round>.from(
         (map['rounds'] as List<dynamic>?)?.map<Round>(
           (x) => Round.fromMap(x as Map<String, dynamic>),
-        ) ?? List.generate(3, (index) => Round(
+        ).toList() ?? List.generate(5, (index) => Round( // Changed from 3 to 5 and removed the extra comma
             roundNumber: index + 1,
             myScore: 0,
             opponentScore: 0,
             priorityPlayerId: null,
-            // Assurez-vous que l'initialisation ici est aussi complète que dans Round()
-            myQuest1_1Completed: false, // Ajouté
-            myQuest1_2Completed: false, // Ajouté
-            myQuest1_3Completed: false, // Ajouté
-            myQuest2_1Completed: false, // Ajouté
-            myQuest2_2Completed: false, // Ajouté
-            myQuest2_3Completed: false, // Ajouté
-            opponentQuest1_1Completed: false, // Ajouté
-            opponentQuest1_2Completed: false, // Ajouté
-            opponentQuest1_3Completed: false, // Ajouté
-            opponentQuest2_1Completed: false, // Ajouté
-            opponentQuest2_2Completed: false, // Ajouté
-            opponentQuest2_3Completed: false, // Ajouté
-          )),),
-      result: map['result'] as String? ?? 'Inconnu', // Default for result
-      scoreOutOf20: map['scoreOutOf20'] as int? ?? 10, // Default for score
+            myQuest1_1Completed: false,
+            myQuest1_2Completed: false,
+            myQuest1_3Completed: false,
+            myQuest2_1Completed: false,
+            myQuest2_2Completed: false,
+            myQuest2_3Completed: false,
+            opponentQuest1_1Completed: false,
+            opponentQuest1_2Completed: false,
+            opponentQuest1_3Completed: false,
+            opponentQuest2_1Completed: false,
+            opponentQuest2_2Completed: false,
+            opponentQuest2_3Completed: false,
+          )), ),// No extra comma here
+      result: map['result'] as String,
+      scoreOutOf20: map['scoreOutOf20'] as int,
       notes: map['notes'] as String?,
     );
   }

@@ -1,6 +1,7 @@
 // lib/screens/add_game_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import 'package:octominia/models/game.dart';
 import 'package:octominia/models/round.dart';
 import 'package:octominia/services/game_json_storage.dart';
@@ -10,9 +11,14 @@ import 'package:octominia/screens/game_round_screen.dart';
 import 'package:octominia/screens/game_summary_screen.dart';
 
 class AddGameScreen extends StatefulWidget {
-  final Function() onGameAdded;
+  final Game? initialGame;
+  final Function(Game game) onGameSaved;
 
-  const AddGameScreen({super.key, required this.onGameAdded});
+  const AddGameScreen({
+    super.key,
+    this.initialGame,
+    required this.onGameSaved,
+  });
 
   @override
   State<AddGameScreen> createState() => _AddGameScreenState();
@@ -22,13 +28,14 @@ class _AddGameScreenState extends State<AddGameScreen> {
   final PageController _pageController = PageController();
   int _currentPageIndex = 0;
   late Game _newGame;
-
+  bool _gameInitiallySaved = false;
   final GameJsonStorage _gameStorage = GameJsonStorage();
 
   @override
   void initState() {
     super.initState();
-    _newGame = Game(
+    _newGame = widget.initialGame ?? Game(
+      id: const Uuid().v4(),
       date: DateTime.now(),
       myPlayerName: 'Moi',
       myFactionName: '',
@@ -36,33 +43,35 @@ class _AddGameScreenState extends State<AddGameScreen> {
       opponentFactionName: '',
       myScore: 0,
       opponentScore: 0,
-      result: '',
-      scoreOutOf20: 0,
-      myDrops: 1,
+      myDrops: 1, // Initialisation à 1 (entre 1 et 5)
+      opponentDrops: 1, // Initialisation à 1 (entre 1 et 5)
       myAuxiliaryUnits: false,
-      opponentDrops: 1,
       opponentAuxiliaryUnits: false,
-      rounds: List.generate(3, (index) => Round(
-        roundNumber: index + 1,
-        myScore: 0,
-        opponentScore: 0,
-        priorityPlayerId: null,
-        // Initialisation de TOUTES les nouvelles quêtes à false
-        myQuest1_1Completed: false,
-        myQuest1_2Completed: false,
-        myQuest1_3Completed: false,
-        myQuest2_1Completed: false,
-        myQuest2_2Completed: false,
-        myQuest2_3Completed: false,
-        opponentQuest1_1Completed: false,
-        opponentQuest1_2Completed: false,
-        opponentQuest1_3Completed: false,
-        opponentQuest2_1Completed: false,
-        opponentQuest2_2Completed: false,
-        opponentQuest2_3Completed: false,
-      )),
-      notes: null,
+      rounds: List.generate(
+        5,
+        (index) => Round(
+          roundNumber: index + 1,
+          myScore: 0,
+          opponentScore: 0,
+          priorityPlayerId: null,
+          myQuest1_1Completed: false,
+          myQuest1_2Completed: false,
+          myQuest1_3Completed: false,
+          myQuest2_1Completed: false,
+          myQuest2_2Completed: false,
+          myQuest2_3Completed: false,
+          opponentQuest1_1Completed: false,
+          opponentQuest1_2Completed: false,
+          opponentQuest1_3Completed: false,
+          opponentQuest2_1Completed: false,
+          opponentQuest2_2Completed: false,
+          opponentQuest2_3Completed: false,
+        ),
+      ),
+      result: 'En cours',
+      scoreOutOf20: 0,
     );
+    _gameInitiallySaved = widget.initialGame != null;
   }
 
   @override
@@ -71,19 +80,81 @@ class _AddGameScreenState extends State<AddGameScreen> {
     super.dispose();
   }
 
-  void _updateGameData(Function(Game) updateFn) {
+  void _updateGameData(Game updatedGame) {
     setState(() {
-      updateFn(_newGame);
-      // Recalculate myScore and opponentScore based on the new Round calculation method
-      _newGame.myScore = _newGame.rounds.fold(0, (sum, round) => sum + round.calculatePlayerTotalScore(true));
-      _newGame.opponentScore = _newGame.rounds.fold(0, (sum, round) => sum + round.calculatePlayerTotalScore(false));
-      _newGame.result = Game.determineResult(_newGame.myScore, _newGame.opponentScore);
-      _newGame.scoreOutOf20 = Game.calculateScoreOutOf20(_newGame.myScore, _newGame.opponentScore);
+      _newGame = updatedGame;
+      int myTotalScore = 0;
+      int opponentTotalScore = 0;
+      for (var round in _newGame.rounds) {
+        myTotalScore += round.calculatePlayerTotalScore(true);
+        opponentTotalScore += round.calculatePlayerTotalScore(false);
+      }
+      _newGame = _newGame.copyWith(
+        myScore: myTotalScore,
+        opponentScore: opponentTotalScore,
+        result: Game.determineResult(myTotalScore, opponentTotalScore),
+        scoreOutOf20: Game.calculateScoreOutOf20(myTotalScore, opponentTotalScore),
+      );
     });
+    if (_gameInitiallySaved) {
+      _saveGame();
+    }
+  }
+
+  void _updateRoundData(Round updatedRound) {
+    setState(() {
+      final updatedRounds = List<Round>.from(_newGame.rounds);
+      final index = updatedRounds.indexWhere((r) => r.roundNumber == updatedRound.roundNumber);
+      if (index != -1) {
+        updatedRounds[index] = updatedRound;
+        _newGame = _newGame.copyWith(rounds: updatedRounds);
+        int myTotalScore = 0;
+        int opponentTotalScore = 0;
+        for (var round in _newGame.rounds) {
+          myTotalScore += round.calculatePlayerTotalScore(true);
+          opponentTotalScore += round.calculatePlayerTotalScore(false);
+        }
+        _newGame = _newGame.copyWith(
+          myScore: myTotalScore,
+          opponentScore: opponentTotalScore,
+          result: Game.determineResult(myTotalScore, opponentTotalScore),
+          scoreOutOf20: Game.calculateScoreOutOf20(myTotalScore, opponentTotalScore),
+        );
+      }
+    });
+    if (_gameInitiallySaved) {
+      _saveGame();
+    }
+  }
+
+  Future<void> _saveGame() async {
+    try {
+      if (!_gameInitiallySaved) {
+        await _gameStorage.addGame(_newGame);
+        setState(() {
+          _gameInitiallySaved = true;
+        });
+        // Suppression du feedback visuel
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   const SnackBar(content: Text('Partie initialisée et sauvegardée !')),
+        // );
+      } else {
+        await _gameStorage.updateGame(_newGame);
+        // Suppression du feedback visuel
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   const SnackBar(content: Text('Partie mise à jour !')),
+        // );
+      }
+      widget.onGameSaved(_newGame);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur de sauvegarde: $e')),
+      );
+    }
   }
 
   void _nextPage() {
-    if (_currentPageIndex == 0) { // GameSetupScreen
+    if (_currentPageIndex == 0) {
       if (_newGame.myFactionName.isEmpty || _newGame.opponentFactionName.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Veuillez sélectionner les factions pour les deux joueurs.')),
@@ -91,43 +162,29 @@ class _AddGameScreenState extends State<AddGameScreen> {
         return;
       }
     }
-    if (_currentPageIndex == 1) { // GameRollOffsScreen
+
+    if (_currentPageIndex == 1) {
       if (_newGame.attackerPlayerId == null || _newGame.priorityPlayerIdRound1 == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Veuillez sélectionner l\'attaquant et la priorité pour le Tour 1.')),
+          const SnackBar(content: Text('Veuillez définir l\'attaquant et la priorité du Tour 1.')),
         );
         return;
       }
-    }
-    // Validation for Round Screens (index 2, 3, 4)
-    if (_currentPageIndex >= 2 && _currentPageIndex <= 4) {
-      // Calculer le numéro de tour réel
-      final int actualRoundNumber = _currentPageIndex - 1; // Tour 1 pour index 2, Tour 2 pour index 3, etc.
-      // Assurez-vous que le round existe (devrait être le cas avec l'initialisation dans initState)
-      if (_newGame.rounds.length < actualRoundNumber) {
-          // This case should ideally not happen if Game constructor initializes 3 rounds,
-          // but if it ever does, add a new round to prevent index out of bounds.
-          // Note: The roundNumber here should be actualRoundNumber, not _currentPageIndex - 1 if _newGame.rounds[index] is used later.
-          // Let's ensure consistency.
-          _newGame.rounds.add(Round(roundNumber: actualRoundNumber, myScore: 0, opponentScore: 0, priorityPlayerId: null));
-      }
-      // Utiliser l'index correct pour accéder au round dans la liste
-      final currentRound = _newGame.rounds[actualRoundNumber -1 ]; // List is 0-indexed, roundNumber is 1-indexed
-
-      if (currentRound.priorityPlayerId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          // Utiliser actualRoundNumber pour le message
-          SnackBar(content: Text('Veuillez sélectionner la priorité pour le Tour $actualRoundNumber.')),
-        );
-        return;
+      if (!_gameInitiallySaved) {
+        _saveGame();
       }
     }
 
-    if (_currentPageIndex < _buildPages().length - 1) {
+    if (_currentPageIndex < 5) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
-        curve: Curves.easeIn,
+        curve: Curves.ease,
       );
+      setState(() {
+        _currentPageIndex++;
+      });
+    } else if (_currentPageIndex == 5) {
+      // Sur l'écran de résumé, le bouton de sauvegarde gère la sauvegarde finale.
     }
   }
 
@@ -135,114 +192,46 @@ class _AddGameScreenState extends State<AddGameScreen> {
     if (_currentPageIndex > 0) {
       _pageController.previousPage(
         duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
+        curve: Curves.ease,
       );
+      setState(() {
+        _currentPageIndex--;
+      });
     } else {
       Navigator.of(context).pop();
     }
   }
 
-  Future<void> _saveGame() async {
-    // Recalculate final scores before saving
-    _newGame.myScore = _newGame.rounds.fold(0, (sum, round) => sum + round.calculatePlayerTotalScore(true));
-    _newGame.opponentScore = _newGame.rounds.fold(0, (sum, round) => sum + round.calculatePlayerTotalScore(false));
-    _newGame.result = Game.determineResult(_newGame.myScore, _newGame.opponentScore);
-    _newGame.scoreOutOf20 = Game.calculateScoreOutOf20(_newGame.myScore, _newGame.opponentScore);
-
-    await _gameStorage.addGame(_newGame);
-    widget.onGameAdded();
-    if (mounted) {
-      Navigator.of(context).pop();
-    }
-  }
-
-  List<Widget> _buildPages() {
-    return [
-      GameSetupScreen(
-        game: _newGame,
-        onUpdate: (updatedGame) => _updateGameData((game) {
-          game.myPlayerName = updatedGame.myPlayerName;
-          game.myFactionName = updatedGame.myFactionName;
-          game.myFactionImageUrl = updatedGame.myFactionImageUrl;
-          game.myDrops = updatedGame.myDrops;
-          game.myAuxiliaryUnits = updatedGame.myAuxiliaryUnits;
-          game.opponentPlayerName = updatedGame.opponentPlayerName;
-          game.opponentFactionName = updatedGame.opponentFactionName;
-          game.opponentFactionImageUrl = updatedGame.opponentFactionImageUrl;
-          game.opponentDrops = updatedGame.opponentDrops;
-          game.opponentAuxiliaryUnits = updatedGame.opponentAuxiliaryUnits;
-        }),
-      ),
-      GameRollOffsScreen(
-        game: _newGame,
-        onUpdate: (updatedGame) => _updateGameData((game) {
-          game.attackerPlayerId = updatedGame.attackerPlayerId;
-          game.priorityPlayerIdRound1 = updatedGame.priorityPlayerIdRound1;
-        }),
-      ),
-      GameRoundScreen(
-        roundNumber: 1,
-        game: _newGame,
-        onUpdateRound: (updatedRound) => _updateGameData((game) {
-          final index = game.rounds.indexWhere((r) => r.roundNumber == updatedRound.roundNumber);
-          if (index != -1) {
-            game.rounds[index] = updatedRound;
-          } else {
-            game.rounds.add(updatedRound);
-            game.rounds.sort((a, b) => a.roundNumber.compareTo(b.roundNumber));
-          }
-        }),
-      ),
-      GameRoundScreen(
-        roundNumber: 2,
-        game: _newGame,
-        onUpdateRound: (updatedRound) => _updateGameData((game) {
-          final index = game.rounds.indexWhere((r) => r.roundNumber == updatedRound.roundNumber);
-          if (index != -1) {
-            game.rounds[index] = updatedRound;
-          } else {
-            game.rounds.add(updatedRound);
-            game.rounds.sort((a, b) => a.roundNumber.compareTo(b.roundNumber));
-          }
-        }),
-      ),
-      GameRoundScreen(
-        roundNumber: 3,
-        game: _newGame,
-        onUpdateRound: (updatedRound) => _updateGameData((game) {
-          final index = game.rounds.indexWhere((r) => r.roundNumber == updatedRound.roundNumber);
-          if (index != -1) {
-            game.rounds[index] = updatedRound;
-          } else {
-            game.rounds.add(updatedRound);
-            game.rounds.sort((a, b) => a.roundNumber.compareTo(b.roundNumber));
-          }
-        }),
-      ),
-      GameSummaryScreen(
-        game: _newGame,
-        onSave: _saveGame,
-      ),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
-    final bool isLastPage = _currentPageIndex == _buildPages().length - 1;
+    String appBarTitle;
+    switch (_currentPageIndex) {
+      case 0:
+        appBarTitle = 'Configuration de la Partie';
+        break;
+      case 1:
+        appBarTitle = 'Jet de Dés & Priorité';
+        break;
+      case 2:
+        appBarTitle = 'Tour 1';
+        break;
+      case 3:
+        appBarTitle = 'Tour 2';
+        break;
+      case 4:
+        appBarTitle = 'Tour 3';
+        break;
+      case 5:
+        appBarTitle = 'Résumé de la Partie';
+        break;
+      default:
+        appBarTitle = 'Partie'; // Fallback
+        break;
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _currentPageIndex == 0
-              ? 'Nouvelle Partie'
-              : _currentPageIndex == 1
-                  ? 'Roll Offs & Priorité'
-                  : _currentPageIndex >= 2 && _currentPageIndex <= 4
-                      ? 'Tour ${_currentPageIndex - 1}'
-                      : 'Résumé de la Partie',
-        ),
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+        title: Text(appBarTitle),
       ),
       body: Column(
         children: [
@@ -255,42 +244,56 @@ class _AddGameScreenState extends State<AddGameScreen> {
                   _currentPageIndex = index;
                 });
               },
-              children: _buildPages(),
+              children: [
+                GameSetupScreen(
+                  game: _newGame,
+                  onUpdate: _updateGameData,
+                ),
+                GameRollOffsScreen(
+                  game: _newGame,
+                  onUpdate: _updateGameData,
+                ),
+                GameRoundScreen(
+                  game: _newGame,
+                  roundNumber: 1,
+                  onUpdateRound: _updateRoundData,
+                ),
+                GameRoundScreen(
+                  game: _newGame,
+                  roundNumber: 2,
+                  onUpdateRound: _updateRoundData,
+                ),
+                GameRoundScreen(
+                  game: _newGame,
+                  roundNumber: 3,
+                  onUpdateRound: _updateRoundData,
+                ),
+                GameSummaryScreen(
+                  game: _newGame,
+                  onSave: _saveGame,
+                ),
+              ],
             ),
           ),
-          if (!isLastPage)
-            SafeArea(
-              bottom: true,
-              child: Container(
-                padding: const EdgeInsets.all(16.0),
-                color: Theme.of(context).appBarTheme.backgroundColor,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    ElevatedButton(
-                      onPressed: _currentPageIndex == 0 ? null : _previousPage,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        minimumSize: const Size(60, 48),
-                      ),
-                      child: const Icon(Icons.arrow_back),
-                    ),
-                    ElevatedButton(
-                      onPressed: _nextPage,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.secondary,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        minimumSize: const Size(60, 48),
-                      ),
-                      child: const Icon(Icons.arrow_forward),
-                    ),
-                  ],
-                ),
+          // Les boutons seront désormais en bas, à l'intérieur d'un SafeArea
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ElevatedButton(
+                    onPressed: _previousPage,
+                    child: const Text('Précédent'),
+                  ),
+                  ElevatedButton(
+                    onPressed: _nextPage,
+                    child: Text(_currentPageIndex == 5 ? 'Terminer' : 'Suivant'),
+                  ),
+                ],
               ),
             ),
+          ),
         ],
       ),
     );

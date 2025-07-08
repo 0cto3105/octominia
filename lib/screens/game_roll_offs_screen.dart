@@ -20,7 +20,8 @@ class _GameRollOffsScreenState extends State<GameRollOffsScreen> {
   void initState() {
     super.initState();
     _selectedAttacker = widget.game.attackerPlayerId;
-    _selectedPriorityRound1 = widget.game.priorityPlayerIdRound1;
+    // Set default priority for Round 1 to 'me' if not already set
+    _selectedPriorityRound1 = widget.game.priorityPlayerIdRound1 ?? 'me'; 
   }
 
   void _updateGame() {
@@ -35,71 +36,36 @@ class _GameRollOffsScreenState extends State<GameRollOffsScreen> {
     required String playerKey, // 'me' ou 'opponent'
     required String playerName, // Le nom du joueur à afficher
     required bool isSelected, // Si ce bouton est actuellement sélectionné
-    required ValueChanged<String> onSelect, // Callback quand le bouton est cliqué
+    required ValueChanged<String> onSelect, // Callback quand le bouton est sélectionné
   }) {
-    // Déterminez la couleur de fond et de texte en fonction de la sélection
-    final Color backgroundColor = isSelected
-        ? Theme.of(context).colorScheme.secondary // Couleur de sélection (par exemple, votre orange)
-        : Theme.of(context).cardColor; // Couleur non sélectionnée (par exemple, la couleur des cartes)
-
-    final Color textColor = isSelected
-        ? Colors.black // Texte noir sur fond orange
-        : Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white; // Couleur de texte par défaut
-
-    final Color borderColor = isSelected
-        ? Theme.of(context).primaryColor // Bordure plus prononcée si sélectionné
-        : Theme.of(context).dividerColor; // Une bordure subtile si non sélectionné
-
     return Expanded(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0), // Espacement entre les boutons
+        padding: const EdgeInsets.symmetric(horizontal: 4.0),
         child: ElevatedButton(
           onPressed: () => onSelect(playerKey),
           style: ElevatedButton.styleFrom(
-            backgroundColor: backgroundColor,
-            foregroundColor: textColor, // Couleur du texte
-            elevation: isSelected ? 4 : 1, // Ombre plus prononcée si sélectionné
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12.0), // Bords légèrement arrondis
-              side: BorderSide(
-                color: borderColor,
-                width: isSelected ? 2 : 1, // Épaisseur de la bordure
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8), // Padding interne du bouton
+            backgroundColor: isSelected ? Theme.of(context).primaryColor : Theme.of(context).disabledColor,
+            foregroundColor: isSelected ? Colors.white : Colors.black,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            textStyle: const TextStyle(fontSize: 16),
           ),
-          child: Text(
-            playerName,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, // Texte en gras si sélectionné
-              fontSize: 16,
-            ),
-          ),
+          child: Text(playerName),
         ),
       ),
     );
   }
-  // --- FIN DE LA NOUVELLE FONCTION D'AIDE ---
-
 
   @override
   Widget build(BuildContext context) {
-    final String myPlayerName = widget.game.myPlayerName;
-    final String opponentPlayerName = widget.game.opponentPlayerName;
+    // Utilisez les noms des joueurs de l'objet Game
+    String myPlayerName = widget.game.myPlayerName;
+    String opponentPlayerName = widget.game.opponentPlayerName;
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Roll Offs & Priorité',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color),
-          ),
-          const SizedBox(height: 20),
-
-          // Qui est l'attaquant ?
           Text(
             'Qui est l\'attaquant ?',
             style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color),

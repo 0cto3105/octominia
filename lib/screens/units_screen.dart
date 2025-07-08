@@ -24,7 +24,7 @@ class _UnitsScreenState extends State<UnitsScreen> {
 
   Future<void> _loadUnits() async {
     final units = (await _dbHelper.getUnits()).map((map) => Unit.fromMap(map)).toList();
-    final factions = (await _dbHelper.getFactions()).map((map) => Faction.fromMap(map)).toList();
+    final factions = (await _dbHelper.getFactions()).map((map) => Faction.fromMap(map.toMap())).toList();
 
     // Crée une map pour associer rapidement l'ID de faction au nom de faction
     _factionsMap = {for (var f in factions) f.id!: f};

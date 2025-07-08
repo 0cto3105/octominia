@@ -26,8 +26,8 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
   bool _isLoadingFactions = true;
 
   // Variables pour les sliders
-  int _myCurrentDrops = 0;
-  int _opponentCurrentDrops = 0;
+  late int _myCurrentDrops;
+  late int _opponentCurrentDrops;
 
   @override
   void initState() {
@@ -35,13 +35,28 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
     _myPlayerNameController.text = widget.game.myPlayerName;
     _opponentPlayerNameController.text = widget.game.opponentPlayerName;
 
-    // --- MODIFICATION TRÈS IMPORTANTE ICI ---
-    // Assurez-vous que la valeur initiale du slider est AU MOINS la valeur minimale (1)
-    _myCurrentDrops = widget.game.myDrops < 1 ? 1 : widget.game.myDrops;
-    _opponentCurrentDrops = widget.game.opponentDrops < 1 ? 1 : widget.game.opponentDrops;
-    // --- FIN DE LA MODIFICATION ---
-
     _loadFactions();
+
+    // Initialisation des sliders avec les valeurs de la partie
+    // S'assurer que les drops sont au minimum 1
+    _myCurrentDrops = widget.game.myDrops < 1 ? 1 : widget.game.myDrops; // Ensure min is 1
+    _opponentCurrentDrops = widget.game.opponentDrops < 1 ? 1 : widget.game.opponentDrops; // Ensure min is 1
+
+    // Assurez-vous que les factions sont bien définies si la game existe déjà
+    if (widget.game.myFactionName.isNotEmpty) {
+      _mySelectedFaction = Faction(
+          uuid: 'temp_my_uuid', // Placeholder, sera mis à jour après le chargement réel
+          name: widget.game.myFactionName,
+          orderUuid: '',
+          orderId: 0);
+    }
+    if (widget.game.opponentFactionName.isNotEmpty) {
+      _opponentSelectedFaction = Faction(
+          uuid: 'temp_opponent_uuid', // Placeholder
+          name: widget.game.opponentFactionName,
+          orderUuid: '',
+          orderId: 0);
+    }
 
     _myPlayerNameController.addListener(_updateGame);
     _opponentPlayerNameController.addListener(_updateGame);
@@ -56,202 +71,195 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
     super.dispose();
   }
 
-  void _updateGame() {
-    widget.onUpdate(widget.game.copyWith(
-      myPlayerName: _myPlayerNameController.text,
-      opponentPlayerName: _opponentPlayerNameController.text,
-      myDrops: _myCurrentDrops,
-      opponentDrops: _opponentCurrentDrops,
-    ));
-  }
-
   Future<void> _loadFactions() async {
     setState(() {
       _isLoadingFactions = true;
     });
-    final List<Map<String, dynamic>> factionMaps = await DatabaseHelper().getFactions();
+    final dbHelper = DatabaseHelper();
+    final loadedFactions = await dbHelper.getFactions();
     setState(() {
-      _factions = factionMaps.map((map) => Faction.fromMap(map)).toList();
-      _factions.sort((a, b) => a.name.compareTo(b.name));
-
+      _factions = loadedFactions;
       if (widget.game.myFactionName.isNotEmpty) {
         _mySelectedFaction = _factions.firstWhere(
-          (f) => f.name == widget.game.myFactionName,
-          orElse: () => _factions.first,
+          (faction) => faction.name == widget.game.myFactionName,
+          orElse: () => null as Faction, // Gérer le cas où la faction n'est pas trouvée
         );
       }
       if (widget.game.opponentFactionName.isNotEmpty) {
         _opponentSelectedFaction = _factions.firstWhere(
-          (f) => f.name == widget.game.opponentFactionName,
-          orElse: () => _factions.first,
+          (faction) => faction.name == widget.game.opponentFactionName,
+          orElse: () => null as Faction, // Gérer le cas où la faction n'est pas trouvée
         );
       }
       _isLoadingFactions = false;
     });
   }
 
+  void _updateGame() {
+    widget.onUpdate(widget.game.copyWith(
+      myPlayerName: _myPlayerNameController.text,
+      myFactionName: _mySelectedFaction?.name,
+      myFactionImageUrl: _mySelectedFaction?.imageUrl,
+      myDrops: _myCurrentDrops,
+      opponentPlayerName: _opponentPlayerNameController.text,
+      opponentFactionName: _opponentSelectedFaction?.name,
+      opponentFactionImageUrl: _opponentSelectedFaction?.imageUrl,
+      opponentDrops: _opponentCurrentDrops,
+    ));
+  }
+
+  Widget _buildPlayerSetup(
+      String playerName,
+      TextEditingController controller,
+      Faction? selectedFaction,
+      ValueChanged<Faction?> onFactionChanged,
+      int currentDrops,
+      ValueChanged<double> onDropsChanged,
+      bool hasAuxiliaryUnits,
+      ValueChanged<bool?> onAuxiliaryUnitsChanged,
+      bool isMyPlayer,
+      ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          isMyPlayer ? 'Mon Joueur' : 'Adversaire',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color),
+        ),
+        TextFormField(
+          controller: controller,
+          decoration: InputDecoration(labelText: 'Nom du ${isMyPlayer ? 'joueur' : 'adversaire'}'),
+          onChanged: (value) => _updateGame(),
+        ),
+        const SizedBox(height: 16.0),
+        _isLoadingFactions
+            ? const CircularProgressIndicator()
+            : DropdownButtonFormField<Faction>(
+          value: selectedFaction,
+          decoration: const InputDecoration(labelText: 'Faction'),
+          items: _factions.map((faction) {
+            return DropdownMenuItem(
+              value: faction,
+              child: Text(faction.name),
+            );
+          }).toList(),
+          onChanged: (Faction? newValue) {
+            setState(() {
+              if (isMyPlayer) {
+                _mySelectedFaction = newValue;
+              } else {
+                _opponentSelectedFaction = newValue;
+              }
+              _updateGame();
+            });
+          },
+          isExpanded: true,
+          menuMaxHeight: 300,
+        ),
+        const SizedBox(height: 16.0),
+        Text('Drops: $currentDrops'),
+        Slider(
+          value: currentDrops.toDouble(),
+          min: 1, // Min drop is 1
+          max: 5, // Max drop is 5
+          divisions: 4, // Divisions for 1, 2, 3, 4, 5
+          label: currentDrops.round().toString(),
+          onChanged: (double value) {
+            setState(() {
+              if (isMyPlayer) {
+                _myCurrentDrops = value.round();
+              } else {
+                _opponentCurrentDrops = value.round();
+              }
+              _updateGame();
+            });
+          },
+          activeColor: isMyPlayer ? Theme.of(context).primaryColor : Theme.of(context).colorScheme.secondary,
+          inactiveColor: (isMyPlayer ? Theme.of(context).primaryColor : Theme.of(context).colorScheme.secondary).withOpacity(0.3),
+        ),
+        Row(
+          children: [
+            Checkbox(
+              value: hasAuxiliaryUnits,
+              onChanged: onAuxiliaryUnitsChanged,
+              checkColor: isMyPlayer ? Colors.white : Colors.black,
+              activeColor: isMyPlayer ? Theme.of(context).primaryColor : Theme.of(context).colorScheme.secondary,
+            ),
+            Text(
+              '${isMyPlayer ? 'J\'ai' : 'L\'adversaire a'} des unités auxiliaires',
+              style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24.0),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return _isLoadingFactions
-        ? const Center(child: CircularProgressIndicator())
-        : Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Form(
-              key: _formKey,
-              child: ListView(
-                children: [
-                  // Mon Joueur
-                  Text(
-                    'Mon Joueur',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color),
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _myPlayerNameController,
-                    decoration: const InputDecoration(labelText: 'Pseudo'),
-                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
-                    validator: (value) => value!.isEmpty ? 'Veuillez entrer votre pseudo' : null,
-                  ),
-                  DropdownButtonFormField<Faction>(
-                    value: _mySelectedFaction,
-                    hint: const Text('Sélectionner ma faction'),
-                    decoration: const InputDecoration(labelText: 'Ma Faction'),
-                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
-                    dropdownColor: Theme.of(context).cardColor,
-                    onChanged: (Faction? newValue) {
-                      setState(() {
-                        _mySelectedFaction = newValue;
-                        widget.onUpdate(widget.game.copyWith(
-                          myFactionName: newValue?.name,
-                          myFactionImageUrl: newValue?.imageUrl,
-                        ));
-                      });
-                    },
-                    items: _factions.map<DropdownMenuItem<Faction>>((Faction faction) {
-                      return DropdownMenuItem<Faction>(
-                        value: faction,
-                        child: Text(faction.name),
-                      );
-                    }).toList(),
-                    validator: (value) => value == null ? 'Veuillez sélectionner votre faction' : null,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Mon nombre de drops: ${_myCurrentDrops}',
-                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
-                  ),
-                  Slider(
-                    value: _myCurrentDrops.toDouble(),
-                    min: 1,
-                    max: 5,
-                    divisions: 4,
-                    label: _myCurrentDrops.round().toString(),
-                    onChanged: (double value) {
-                      setState(() {
-                        _myCurrentDrops = value.round();
-                        _updateGame();
-                      });
-                    },
-                    activeColor: Theme.of(context).colorScheme.secondary,
-                    inactiveColor: Theme.of(context).colorScheme.secondary.withOpacity(0.3),
-                  ),
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: widget.game.myAuxiliaryUnits,
-                        onChanged: (bool? newValue) {
-                          setState(() {
-                            widget.onUpdate(widget.game.copyWith(myAuxiliaryUnits: newValue));
-                          });
-                        },
-                        checkColor: Colors.black,
-                        activeColor: Theme.of(context).colorScheme.secondary,
-                      ),
-                      Text(
-                        'J\'ai des unités auxiliaires',
-                        style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24.0),
-
-                  // Joueur Adversaire
-                  Text(
-                    'Joueur Adversaire',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color),
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _opponentPlayerNameController,
-                    decoration: const InputDecoration(labelText: 'Pseudo Adversaire'),
-                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
-                    validator: (value) => value!.isEmpty ? 'Veuillez entrer le pseudo de l\'adversaire' : null,
-                  ),
-                  DropdownButtonFormField<Faction>(
-                    value: _opponentSelectedFaction,
-                    hint: const Text('Sélectionner la faction adverse'),
-                    decoration: const InputDecoration(labelText: 'Faction Adversaire'),
-                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
-                    dropdownColor: Theme.of(context).cardColor,
-                    onChanged: (Faction? newValue) {
-                      setState(() {
-                        _opponentSelectedFaction = newValue;
-                        widget.onUpdate(widget.game.copyWith(
-                          opponentFactionName: newValue?.name,
-                          opponentFactionImageUrl: newValue?.imageUrl,
-                        ));
-                      });
-                    },
-                    items: _factions.map<DropdownMenuItem<Faction>>((Faction faction) {
-                      return DropdownMenuItem<Faction>(
-                        value: faction,
-                        child: Text(faction.name),
-                      );
-                    }).toList(),
-                    validator: (value) => value == null ? 'Veuillez sélectionner la faction de l\'adversaire' : null,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Nombre de drops adverses: ${_opponentCurrentDrops}',
-                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
-                  ),
-                  Slider(
-                    value: _opponentCurrentDrops.toDouble(),
-                    min: 1,
-                    max: 5,
-                    divisions: 4,
-                    label: _opponentCurrentDrops.round().toString(),
-                    onChanged: (double value) {
-                      setState(() {
-                        _opponentCurrentDrops = value.round();
-                        _updateGame();
-                      });
-                    },
-                    activeColor: Theme.of(context).colorScheme.secondary,
-                    inactiveColor: Theme.of(context).colorScheme.secondary.withOpacity(0.3),
-                  ),
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: widget.game.opponentAuxiliaryUnits,
-                        onChanged: (bool? newValue) {
-                          setState(() {
-                            widget.onUpdate(widget.game.copyWith(opponentAuxiliaryUnits: newValue));
-                          });
-                        },
-                        checkColor: Colors.black,
-                        activeColor: Theme.of(context).colorScheme.secondary,
-                      ),
-                      Text(
-                        'L\'adversaire a des unités auxiliaires',
-                        style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24.0),
-                ],
+    return Scaffold(
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              _buildPlayerSetup(
+                _myPlayerNameController.text,
+                _myPlayerNameController,
+                _mySelectedFaction,
+                    (newValue) {
+                  setState(() {
+                    _mySelectedFaction = newValue;
+                    _updateGame();
+                  });
+                },
+                _myCurrentDrops,
+                    (value) {
+                  setState(() {
+                    _myCurrentDrops = value.round();
+                    _updateGame();
+                  });
+                },
+                widget.game.myAuxiliaryUnits,
+                    (newValue) {
+                  setState(() {
+                    widget.onUpdate(widget.game.copyWith(myAuxiliaryUnits: newValue));
+                  });
+                },
+                true,
               ),
-            ),
-          );
+              _buildPlayerSetup(
+                _opponentPlayerNameController.text,
+                _opponentPlayerNameController,
+                _opponentSelectedFaction,
+                    (newValue) {
+                  setState(() {
+                    _opponentSelectedFaction = newValue;
+                    _updateGame();
+                  });
+                },
+                _opponentCurrentDrops,
+                    (value) {
+                  setState(() {
+                    _opponentCurrentDrops = value.round();
+                    _updateGame();
+                  });
+                },
+                widget.game.opponentAuxiliaryUnits,
+                    (newValue) {
+                  setState(() {
+                    widget.onUpdate(widget.game.copyWith(opponentAuxiliaryUnits: newValue));
+                  });
+                },
+                false,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

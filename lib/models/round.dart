@@ -70,6 +70,45 @@ class Round {
     return baseScore + questScore;
   }
 
+  // Ajout de la méthode copyWith ici
+  Round copyWith({
+    int? roundNumber,
+    int? myScore,
+    int? opponentScore,
+    String? priorityPlayerId,
+    bool? myQuest1_1Completed,
+    bool? myQuest1_2Completed,
+    bool? myQuest1_3Completed,
+    bool? myQuest2_1Completed,
+    bool? myQuest2_2Completed,
+    bool? myQuest2_3Completed,
+    bool? opponentQuest1_1Completed,
+    bool? opponentQuest1_2Completed,
+    bool? opponentQuest1_3Completed,
+    bool? opponentQuest2_1Completed,
+    bool? opponentQuest2_2Completed,
+    bool? opponentQuest2_3Completed,
+  }) {
+    return Round(
+      roundNumber: roundNumber ?? this.roundNumber,
+      myScore: myScore ?? this.myScore,
+      opponentScore: opponentScore ?? this.opponentScore,
+      priorityPlayerId: priorityPlayerId ?? this.priorityPlayerId,
+      myQuest1_1Completed: myQuest1_1Completed ?? this.myQuest1_1Completed,
+      myQuest1_2Completed: myQuest1_2Completed ?? this.myQuest1_2Completed,
+      myQuest1_3Completed: myQuest1_3Completed ?? this.myQuest1_3Completed,
+      myQuest2_1Completed: myQuest2_1Completed ?? this.myQuest2_1Completed,
+      myQuest2_2Completed: myQuest2_2Completed ?? this.myQuest2_2Completed,
+      myQuest2_3Completed: myQuest2_3Completed ?? this.myQuest2_3Completed,
+      opponentQuest1_1Completed: opponentQuest1_1Completed ?? this.opponentQuest1_1Completed,
+      opponentQuest1_2Completed: opponentQuest1_2Completed ?? this.opponentQuest1_2Completed,
+      opponentQuest1_3Completed: opponentQuest1_3Completed ?? this.opponentQuest1_3Completed,
+      opponentQuest2_1Completed: opponentQuest2_1Completed ?? this.opponentQuest2_1Completed,
+      opponentQuest2_2Completed: opponentQuest2_2Completed ?? this.opponentQuest2_2Completed,
+      opponentQuest2_3Completed: opponentQuest2_3Completed ?? this.opponentQuest2_3Completed,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'roundNumber': roundNumber,

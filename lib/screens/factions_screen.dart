@@ -28,7 +28,7 @@ class _FactionsScreenState extends State<FactionsScreen> {
     allOrders.sort((a, b) => a.name.compareTo(b.name));
     _orders = allOrders;
 
-    final allFactions = (await _dbHelper.getFactions()).map((map) => Faction.fromMap(map)).toList();
+    final allFactions = (await _dbHelper.getFactions()).map((map) => Faction.fromMap(map.toMap())).toList();
     allFactions.sort((a, b) => a.name.compareTo(b.name));
 
     Map<int, List<Faction>> groupedFactions = {};

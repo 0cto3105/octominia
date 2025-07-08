@@ -58,7 +58,7 @@ class _CollectionScreenState extends State<CollectionScreen> with WidgetsBinding
 
     final Map<int, List<Faction>> factionsByOrder = {};
     for (var factionMap in factionsData) {
-      final faction = Faction.fromMap(factionMap);
+      final faction = Faction.fromMap(factionMap.toMap());
       factionsByOrder.putIfAbsent(faction.orderId, () => []).add(faction);
     }
 
@@ -78,7 +78,7 @@ class _CollectionScreenState extends State<CollectionScreen> with WidgetsBinding
     final Map<int, int> factionToSellQty = {};
     final Map<int, int> factionToBuyQty = {};
 
-    for (var faction in factionsData.map((e) => Faction.fromMap(e))) {
+    for (var faction in factionsData.map((e) => Faction.fromMap(e.toMap()))) {
       int currentFactionToSell = 0;
       int currentFactionToBuy = 0;
 

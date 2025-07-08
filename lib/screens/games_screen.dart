@@ -342,20 +342,25 @@ class _GamesScreenState extends State<GamesScreen> {
                     );
                   },
                 ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => AddGameScreen(
-                onGameAdded: _loadGames,
-              ),
-            ),
-          );
-        },
-        backgroundColor: Theme.of(context).colorScheme.secondary,
-        foregroundColor: Colors.black,
-        child: const Icon(Icons.add),
+floatingActionButton: FloatingActionButton(
+  onPressed: () async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AddGameScreen(
+          initialGame: null, // Indique que c'est une nouvelle partie
+          onGameSaved: (Game savedGame) {
+            // Callback déclenché après la sauvegarde d'une nouvelle partie
+            // ou la mise à jour d'une partie existante.
+            _loadGames(); // Rechargez toutes les parties pour rafraîchir la liste.
+          },
+        ),
       ),
+    );
+  },
+  backgroundColor: Theme.of(context).colorScheme.secondary,
+  foregroundColor: Colors.black,
+  child: const Icon(Icons.add),
+),
     );
   }
 }
