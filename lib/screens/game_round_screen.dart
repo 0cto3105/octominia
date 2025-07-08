@@ -24,7 +24,6 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
   late Round _currentRound;
   late String _myPlayerName;
   late String _opponentPlayerName;
-  // _previousRound n'est plus nécessaire directement car on va itérer sur game.rounds
 
   @override
   void initState() {
@@ -35,6 +34,11 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     _currentRound = widget.game.rounds.firstWhere(
       (round) => round.roundNumber == widget.roundNumber,
     );
+
+    // DÉFINIR 'me' COMME PRIORITÉ PAR DÉFAUT SI NULL
+    if (_currentRound.priorityPlayerId == null) {
+      _currentRound = _currentRound.copyWith(priorityPlayerId: 'me');
+    }
   }
 
   void _updateRoundLocally(Round updatedRound) {
@@ -192,8 +196,7 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
             ),
           ],
         ),
-      ],
-    );
+      ]);
   }
 
   // Helper method to build the primary score slider and display its value
@@ -204,20 +207,20 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
         Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
           child: Text(
-            'Primaire', // Renommé de 'Score Primaire' à 'Primaire'
+            'Primaire',
             style: TextStyle(
-                fontSize: 14, // Taille de police plus petite pour plus de discrétion
-                fontWeight: FontWeight.w500, // Poids de police plus léger
-                color: Theme.of(context).textTheme.bodySmall?.color), // Couleur plus discrète
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Theme.of(context).textTheme.bodySmall?.color),
           ),
         ),
         Row(
           children: [
             // Affichage du chiffre à gauche du slider
             Padding(
-              padding: const EdgeInsets.only(right: 8.0), // Marge à droite du texte
+              padding: const EdgeInsets.only(right: 8.0),
               child: Text(
-                currentScore.toString(), // Affiche le chiffre en permanence
+                currentScore.toString(),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -231,7 +234,7 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
                 min: 0,
                 max: 10,
                 divisions: 10,
-                label: currentScore.toString(), // Affiche le chiffre dans la bulle du slider (à l'interaction)
+                label: currentScore.toString(),
                 onChanged: (double value) {
                   _updatePrimaryScore(value.round(), isMyPlayer);
                 },
@@ -253,10 +256,10 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
           value: value,
           onChanged: isEnabled
               ? (bool? newValue) {
-                  if (onChanged != null) {
-                    onChanged(newValue ?? false);
+                    if (onChanged != null) {
+                      onChanged(newValue ?? false);
+                    }
                   }
-                }
               : null,
           checkColor: Colors.white,
           activeColor: Theme.of(context).primaryColor,
@@ -318,11 +321,11 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
         Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
           child: Text(
-            'Secondaire', // Renommé de 'Quêtes' à 'Secondaire'
+            'Secondaire',
             style: TextStyle(
-                fontSize: 14, // Taille de police plus petite pour plus de discrétion
-                fontWeight: FontWeight.w500, // Poids de police plus léger
-                color: Theme.of(context).textTheme.bodySmall?.color), // Couleur plus discrète
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Theme.of(context).textTheme.bodySmall?.color),
           ),
         ),
         Row(
@@ -387,7 +390,22 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
   }
 
   // New Widget to encapsulate player's score and quest sections in a Card
-  Widget _buildPlayerScoreCard(BuildContext context, String playerName, bool isMyPlayer) {
+  // Modified to accept total scores for underdog logic
+  Widget _buildPlayerScoreCard(BuildContext context, String playerName, bool isMyPlayer, int myTotalScorePreviousRounds, int opponentTotalScorePreviousRounds) {
+    // Determine the underdog
+    String? underdogPlayerId;
+    int scoreDifference = (myTotalScorePreviousRounds - opponentTotalScorePreviousRounds).abs();
+
+    if (myTotalScorePreviousRounds < opponentTotalScorePreviousRounds) {
+      underdogPlayerId = 'me';
+    } else if (opponentTotalScorePreviousRounds < myTotalScorePreviousRounds) {
+      underdogPlayerId = 'opponent';
+    }
+
+    // Determine if the current player is the underdog
+    bool isUnderdog = (isMyPlayer && underdogPlayerId == 'me') || (!isMyPlayer && underdogPlayerId == 'opponent');
+    bool isDoubleFreeTurn = isUnderdog && scoreDifference >= 11;
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 10.0),
       elevation: 4.0,
@@ -398,14 +416,36 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Pseudo de la personne concernée en haut à gauche, discret, en jaune
-            Text(
-              playerName,
-              style: const TextStyle( // Utilisation de const TextStyle car la couleur est fixe
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.yellow, // Remis en jaune
-              ),
+            Row(
+              children: [
+                // Pseudo de la personne concernée en haut à gauche, discret, en jaune
+                Text(
+                  playerName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.yellow,
+                  ),
+                ),
+                const SizedBox(width: 8), // Space between name and badge
+                if (isUnderdog)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDoubleFreeTurn ? Colors.redAccent : Colors.blueGrey, // More prominent if double free turn
+                      borderRadius: BorderRadius.circular(20),
+                      border: isDoubleFreeTurn ? Border.all(color: Colors.white, width: 2) : null,
+                    ),
+                    child: Text(
+                      isDoubleFreeTurn ? 'Double Free Turn' : 'Underdog', // Text based on condition
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 10), // Petit espace après le titre
 
@@ -423,12 +463,22 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
 
   @override
   Widget build(BuildContext context) {
-    int myOverallTotalScore = widget.game.myScore;
-    int opponentOverallTotalScore = widget.game.opponentScore;
+    // Initialiser les scores des tours précédents à zéro, car les 'drops' et 'auxiliary units' ne sont pas des points de score.
+    int myScorePreviousRounds = 0; // CORRIGÉ : Initialisé à 0
+    int opponentScorePreviousRounds = 0; // CORRIGÉ : Initialisé à 0
+
+    // Ajouter les scores totaux de chaque tour précédent (primaire + quêtes)
+    for (var round in widget.game.rounds) {
+      if (round.roundNumber < widget.roundNumber) {
+        myScorePreviousRounds += round.calculatePlayerTotalScore(true);
+        opponentScorePreviousRounds += round.calculatePlayerTotalScore(false);
+      }
+    }
 
     // Create the player sections encapsulated in Cards
-    Widget myPlayerCard = _buildPlayerScoreCard(context, _myPlayerName, true);
-    Widget opponentPlayerCard = _buildPlayerScoreCard(context, _opponentPlayerName, false);
+    // Passer les scores calculés au début du tour à _buildPlayerScoreCard
+    Widget myPlayerCard = _buildPlayerScoreCard(context, _myPlayerName, true, myScorePreviousRounds, opponentScorePreviousRounds);
+    Widget opponentPlayerCard = _buildPlayerScoreCard(context, _opponentPlayerName, false, myScorePreviousRounds, opponentScorePreviousRounds);
 
     // List of widgets to display in the body, ordered by priority
     List<Widget> orderedPlayerCards = [];
@@ -452,11 +502,11 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
           children: [
             const SizedBox(height: 10),
 
-            // Display the overall total score
+            // Display the overall total score (this one uses the actual overall game score including current round)
             Align(
               alignment: Alignment.center,
               child: Text(
-                '$_myPlayerName $myOverallTotalScore - $_opponentPlayerName $opponentOverallTotalScore',
+                '$_myPlayerName ${widget.game.myScore} - $_opponentPlayerName ${widget.game.opponentScore}',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

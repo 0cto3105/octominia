@@ -326,6 +326,7 @@ class _AddGameScreenState extends State<AddGameScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(appBarTitle),
+          backgroundColor: Colors.redAccent, // <-- L'en-tête rouge
           actions: [
             IconButton(
               icon: const Icon(Icons.close),
@@ -394,10 +395,18 @@ class _AddGameScreenState extends State<AddGameScreen> {
                   children: [
                     ElevatedButton(
                       onPressed: _previousPage,
+                      style: ElevatedButton.styleFrom( // <-- Style pour le bouton "Précédent"
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                      ),
                       child: const Text('Précédent'),
                     ),
                     ElevatedButton(
                       onPressed: _nextPage,
+                      style: ElevatedButton.styleFrom( // <-- Style pour le bouton "Suivant" / "Finaliser la Partie"
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                      ),
                       child: Text(_currentPageIndex == 7 ? 'Finaliser la Partie' : 'Suivant'), // Updated button text for summary screen
                     ),
                   ],

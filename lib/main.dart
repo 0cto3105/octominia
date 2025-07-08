@@ -98,34 +98,43 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0; // Index de l'onglet sélectionné
-  final PageStorageBucket _bucket = PageStorageBucket(); // Pour préserver l'état de défilement
+  // L'index de l'onglet "Games" est 1 dans votre configuration actuelle.
+  // Nous le sélectionnons par défaut.
+  int _selectedIndex = 1;
+
+  final PageStorageBucket _bucket = PageStorageBucket();
 
   // Déclarez une GlobalKey pour votre DashboardScreen
   final GlobalKey<DashboardScreenState> _dashboardKey = GlobalKey();
 
-  // LISTE DES ÉCRANS
   late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
     _screens = [
-      DashboardScreen(key: _dashboardKey), // Associez la GlobalKey
-      const GamesScreen(), // Le nouvel écran des parties
-      const CollectionScreen(),
+      DashboardScreen(key: _dashboardKey), // L'index 0
+      const GamesScreen(), // L'index 1 : C'est celui-ci que nous voulons par défaut
+      const CollectionScreen(), // L'index 2
     ];
   }
 
+  // La méthode _onItemTapped est modifiée pour ne rien faire
+  // si l'index n'est pas 1 (GamesScreen).
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    // Si l'onglet sélectionné est le Dashboard (index 0), déclenchez son rafraîchissement
-    if (index == 0) {
-      _dashboardKey.currentState?.refreshData();
+    if (index == 1) { // Autoriser uniquement le clic sur l'onglet "Games"
+      setState(() {
+        _selectedIndex = index;
+      });
+      // Si l'onglet sélectionné est le Dashboard (index 0), déclenchez son rafraîchissement
+      // Note : Comme Dashboard n'est plus sélectionnable, cette partie ne sera pas appelée
+      // à moins que vous ne changiez la logique plus tard.
+      // if (index == 0) {
+      //   _dashboardKey.currentState?.refreshData();
+      // }
     }
+    // Pour les autres index (0 et 2), la fonction ne fait rien,
+    // ce qui les rend non cliquables.
   }
 
   @override
@@ -152,22 +161,14 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.inventory_2_outlined),
             label: 'Collection',
           ),
-          // Vous pouvez ajouter d'autres onglets ici si nécessaire (ex: Stats, Profile)
-          // BottomNavigationBarItem(
-          //   icon: Icon(Icons.bar_chart),
-          //   label: 'Stats',
-          // ),
-          // BottomNavigationBarItem(
-          //   icon: Icon(Icons.person),
-          //   label: 'Profile',
-          // ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).colorScheme.secondary,
-        unselectedItemColor: Colors.white70,
-        onTap: _onItemTapped,
+        // Utilisez les couleurs pour désaturer les onglets non cliquables
+        selectedItemColor: Theme.of(context).colorScheme.secondary, // Couleur normale pour l'onglet sélectionné
+        unselectedItemColor: Colors.grey, // Couleur grisée pour les onglets non cliquables
+        onTap: _onItemTapped, // Conservez le onTap
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        type: BottomNavigationBarType.fixed, // Utilisez fixed si vous avez plus de 3 éléments
+        type: BottomNavigationBarType.fixed,
       ),
     );
   }

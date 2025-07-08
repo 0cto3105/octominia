@@ -160,8 +160,8 @@ class _GamesScreenState extends State<GamesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Parties'),
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        title: const Text('Games'),
+        backgroundColor: Colors.amberAccent[200],
         foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
       ),
       body: _isLoading

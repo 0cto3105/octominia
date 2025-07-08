@@ -24,13 +24,13 @@ class Game {
   String? myFactionImageUrl;
   int myScore;
   int myDrops;
-  bool myAuxiliaryUnits;
+  bool myAuxiliaryUnits; // CORRIGÉ : Rétabli à 'bool'
   String opponentPlayerName;
   String opponentFactionName;
   String? opponentFactionImageUrl;
   int opponentScore;
   int opponentDrops;
-  bool opponentAuxiliaryUnits;
+  bool opponentAuxiliaryUnits; // CORRIGÉ : Rétabli à 'bool'
   String? attackerPlayerId;
   String? priorityPlayerIdRound1;
   List<Round> rounds;
@@ -47,13 +47,13 @@ class Game {
     this.myFactionImageUrl,
     required this.myScore,
     required this.myDrops,
-    required this.myAuxiliaryUnits,
+    required this.myAuxiliaryUnits, // CORRIGÉ : type 'bool'
     required this.opponentPlayerName,
     required this.opponentFactionName,
     this.opponentFactionImageUrl,
     required this.opponentScore,
     required this.opponentDrops,
-    required this.opponentAuxiliaryUnits,
+    required this.opponentAuxiliaryUnits, // CORRIGÉ : type 'bool'
     this.attackerPlayerId,
     this.priorityPlayerIdRound1,
     List<Round>? rounds,
@@ -62,28 +62,28 @@ class Game {
     this.notes,
     GameState? gameState, // NEW: Make it nullable in constructor
   }) : id = id ?? const Uuid().v4(),
-       rounds = rounds ?? List.generate(
-         5,
-         (index) => Round(
-           roundNumber: index + 1,
-           myScore: 0,
-           opponentScore: 0,
-           priorityPlayerId: null,
-           myQuest1_1Completed: false,
-           myQuest1_2Completed: false,
-           myQuest1_3Completed: false,
-           myQuest2_1Completed: false,
-           myQuest2_2Completed: false,
-           myQuest2_3Completed: false,
-           opponentQuest1_1Completed: false,
-           opponentQuest1_2Completed: false,
-           opponentQuest1_3Completed: false,
-           opponentQuest2_1Completed: false,
-           opponentQuest2_2Completed: false,
-           opponentQuest2_3Completed: false,
-         ),
-       ),
-       gameState = gameState ?? GameState.setup; // NEW: Default to setup
+        rounds = rounds ?? List.generate(
+          5,
+          (index) => Round(
+            roundNumber: index + 1,
+            myScore: 0,
+            opponentScore: 0,
+            priorityPlayerId: null,
+            myQuest1_1Completed: false,
+            myQuest1_2Completed: false,
+            myQuest1_3Completed: false,
+            myQuest2_1Completed: false,
+            myQuest2_2Completed: false,
+            myQuest2_3Completed: false,
+            opponentQuest1_1Completed: false,
+            opponentQuest1_2Completed: false,
+            opponentQuest1_3Completed: false,
+            opponentQuest2_1Completed: false,
+            opponentQuest2_2Completed: false,
+            opponentQuest2_3Completed: false,
+          ),
+        ),
+        gameState = gameState ?? GameState.setup; // NEW: Default to setup
 
   Game copyWith({
     String? id,
@@ -93,13 +93,13 @@ class Game {
     String? myFactionImageUrl,
     int? myScore,
     int? myDrops,
-    bool? myAuxiliaryUnits,
+    bool? myAuxiliaryUnits, // CORRIGÉ : type 'bool?'
     String? opponentPlayerName,
     String? opponentFactionName,
     String? opponentFactionImageUrl,
     int? opponentScore,
     int? opponentDrops,
-    bool? opponentAuxiliaryUnits,
+    bool? opponentAuxiliaryUnits, // CORRIGÉ : type 'bool?'
     String? attackerPlayerId,
     String? priorityPlayerIdRound1,
     List<Round>? rounds,
@@ -116,13 +116,13 @@ class Game {
       myFactionImageUrl: myFactionImageUrl ?? this.myFactionImageUrl,
       myScore: myScore ?? this.myScore,
       myDrops: myDrops ?? this.myDrops,
-      myAuxiliaryUnits: myAuxiliaryUnits ?? this.myAuxiliaryUnits,
+      myAuxiliaryUnits: myAuxiliaryUnits ?? this.myAuxiliaryUnits, // CORRIGÉ
       opponentPlayerName: opponentPlayerName ?? this.opponentPlayerName,
       opponentFactionName: opponentFactionName ?? this.opponentFactionName,
       opponentFactionImageUrl: opponentFactionImageUrl ?? this.opponentFactionImageUrl,
       opponentScore: opponentScore ?? this.opponentScore,
       opponentDrops: opponentDrops ?? this.opponentDrops,
-      opponentAuxiliaryUnits: opponentAuxiliaryUnits ?? this.opponentAuxiliaryUnits,
+      opponentAuxiliaryUnits: opponentAuxiliaryUnits ?? this.opponentAuxiliaryUnits, // CORRIGÉ
       attackerPlayerId: attackerPlayerId ?? this.attackerPlayerId,
       priorityPlayerIdRound1: priorityPlayerIdRound1 ?? this.priorityPlayerIdRound1,
       rounds: rounds ?? this.rounds,
@@ -142,13 +142,13 @@ class Game {
       'myFactionImageUrl': myFactionImageUrl,
       'myScore': myScore,
       'myDrops': myDrops,
-      'myAuxiliaryUnits': myAuxiliaryUnits,
+      'myAuxiliaryUnits': myAuxiliaryUnits, // Type bool sera stocké
       'opponentPlayerName': opponentPlayerName,
       'opponentFactionName': opponentFactionName,
       'opponentFactionImageUrl': opponentFactionImageUrl,
       'opponentScore': opponentScore,
       'opponentDrops': opponentDrops,
-      'opponentAuxiliaryUnits': opponentAuxiliaryUnits,
+      'opponentAuxiliaryUnits': opponentAuxiliaryUnits, // Type bool sera stocké
       'attackerPlayerId': attackerPlayerId,
       'priorityPlayerIdRound1': priorityPlayerIdRound1,
       'rounds': rounds.map((r) => r.toMap()).toList(),
@@ -168,13 +168,13 @@ class Game {
       myFactionImageUrl: map['myFactionImageUrl'] as String?,
       myScore: map['myScore'] as int? ?? 0,
       myDrops: map['myDrops'] as int? ?? 1,
-      myAuxiliaryUnits: map['myAuxiliaryUnits'] as bool? ?? false,
+      myAuxiliaryUnits: map['myAuxiliaryUnits'] as bool? ?? false, // CORRIGÉ : lecture comme 'bool'
       opponentPlayerName: map['opponentPlayerName'] as String,
       opponentFactionName: map['opponentFactionName'] as String,
       opponentFactionImageUrl: map['opponentFactionImageUrl'] as String?,
       opponentScore: map['opponentScore'] as int? ?? 0,
       opponentDrops: map['opponentDrops'] as int? ?? 1,
-      opponentAuxiliaryUnits: map['opponentAuxiliaryUnits'] as bool? ?? false,
+      opponentAuxiliaryUnits: map['opponentAuxiliaryUnits'] as bool? ?? false, // CORRIGÉ : lecture comme 'bool'
       attackerPlayerId: map['attackerPlayerId'] as String?,
       priorityPlayerIdRound1: map['priorityPlayerIdRound1'] as String?,
       rounds: List<Round>.from(
