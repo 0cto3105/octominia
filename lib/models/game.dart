@@ -3,6 +3,19 @@
 import 'package:octominia/models/round.dart';
 import 'package:uuid/uuid.dart';
 
+// Define the GameState enum
+enum GameState {
+  setup,
+  rollOffs,
+  round1,
+  round2,
+  round3,
+  round4,
+  round5,
+  summary, // Reached the summary screen, but not yet "completed"
+  completed, // Game finished and validated
+}
+
 class Game {
   String id;
   DateTime date;
@@ -24,6 +37,7 @@ class Game {
   String result;
   int scoreOutOf20;
   String? notes;
+  GameState gameState; // NEW: Field to track the game's progress state
 
   Game({
     String? id,
@@ -46,47 +60,30 @@ class Game {
     required this.result,
     required this.scoreOutOf20,
     this.notes,
-  }) :
-    this.id = id ?? const Uuid().v4(),
-    this.rounds = rounds ?? List.generate(5, (index) => Round(
-        roundNumber: index + 1,
-        myScore: 0,
-        opponentScore: 0,
-        priorityPlayerId: null,
-        myQuest1_1Completed: false,
-        myQuest1_2Completed: false,
-        myQuest1_3Completed: false,
-        myQuest2_1Completed: false,
-        myQuest2_2Completed: false,
-        myQuest2_3Completed: false,
-        opponentQuest1_1Completed: false,
-        opponentQuest1_2Completed: false,
-        opponentQuest1_3Completed: false,
-        opponentQuest2_1Completed: false,
-        opponentQuest2_2Completed: false,
-        opponentQuest2_3Completed: false,
-      ));
-
-  static String determineResult(int myTotalScore, int opponentTotalScore) {
-    if (myTotalScore > opponentTotalScore) {
-      return 'Victoire';
-    } else if (opponentTotalScore > myTotalScore) {
-      return 'Défaite';
-    } else {
-      return 'Égalité';
-    }
-  }
-
-  static int calculateScoreOutOf20(int myTotalScore, int opponentTotalScore) {
-    int scoreDifference = myTotalScore - opponentTotalScore;
-    if (scoreDifference > 0) {
-      return 10 + (scoreDifference ~/ 2).clamp(0, 10);
-    } else if (scoreDifference < 0) {
-      return 10 + (scoreDifference ~/ 2).clamp(-10, 0);
-    } else {
-      return 10;
-    }
-  }
+    GameState? gameState, // NEW: Make it nullable in constructor
+  }) : id = id ?? const Uuid().v4(),
+       rounds = rounds ?? List.generate(
+         5,
+         (index) => Round(
+           roundNumber: index + 1,
+           myScore: 0,
+           opponentScore: 0,
+           priorityPlayerId: null,
+           myQuest1_1Completed: false,
+           myQuest1_2Completed: false,
+           myQuest1_3Completed: false,
+           myQuest2_1Completed: false,
+           myQuest2_2Completed: false,
+           myQuest2_3Completed: false,
+           opponentQuest1_1Completed: false,
+           opponentQuest1_2Completed: false,
+           opponentQuest1_3Completed: false,
+           opponentQuest2_1Completed: false,
+           opponentQuest2_2Completed: false,
+           opponentQuest2_3Completed: false,
+         ),
+       ),
+       gameState = gameState ?? GameState.setup; // NEW: Default to setup
 
   Game copyWith({
     String? id,
@@ -109,6 +106,7 @@ class Game {
     String? result,
     int? scoreOutOf20,
     String? notes,
+    GameState? gameState, // NEW: Add gameState to copyWith
   }) {
     return Game(
       id: id ?? this.id,
@@ -127,10 +125,11 @@ class Game {
       opponentAuxiliaryUnits: opponentAuxiliaryUnits ?? this.opponentAuxiliaryUnits,
       attackerPlayerId: attackerPlayerId ?? this.attackerPlayerId,
       priorityPlayerIdRound1: priorityPlayerIdRound1 ?? this.priorityPlayerIdRound1,
-      rounds: rounds ?? this.rounds, // Ensure copyWith also uses the existing rounds or provided
+      rounds: rounds ?? this.rounds,
       result: result ?? this.result,
       scoreOutOf20: scoreOutOf20 ?? this.scoreOutOf20,
       notes: notes ?? this.notes,
+      gameState: gameState ?? this.gameState, // NEW: Copy gameState
     );
   }
 
@@ -152,16 +151,17 @@ class Game {
       'opponentAuxiliaryUnits': opponentAuxiliaryUnits,
       'attackerPlayerId': attackerPlayerId,
       'priorityPlayerIdRound1': priorityPlayerIdRound1,
-      'rounds': rounds.map((x) => x.toMap()).toList(),
+      'rounds': rounds.map((r) => r.toMap()).toList(),
       'result': result,
       'scoreOutOf20': scoreOutOf20,
       'notes': notes,
+      'gameState': gameState.name, // NEW: Store enum name as string
     };
   }
 
   factory Game.fromMap(Map<String, dynamic> map) {
     return Game(
-      id: map['id'] as String?,
+      id: map['id'] as String,
       date: DateTime.parse(map['date'] as String),
       myPlayerName: map['myPlayerName'] as String,
       myFactionName: map['myFactionName'] as String,
@@ -177,30 +177,57 @@ class Game {
       opponentAuxiliaryUnits: map['opponentAuxiliaryUnits'] as bool? ?? false,
       attackerPlayerId: map['attackerPlayerId'] as String?,
       priorityPlayerIdRound1: map['priorityPlayerIdRound1'] as String?,
-       rounds: List<Round>.from(
+      rounds: List<Round>.from(
         (map['rounds'] as List<dynamic>?)?.map<Round>(
           (x) => Round.fromMap(x as Map<String, dynamic>),
-        ).toList() ?? List.generate(5, (index) => Round( // Changed from 3 to 5 and removed the extra comma
-            roundNumber: index + 1,
-            myScore: 0,
-            opponentScore: 0,
-            priorityPlayerId: null,
-            myQuest1_1Completed: false,
-            myQuest1_2Completed: false,
-            myQuest1_3Completed: false,
-            myQuest2_1Completed: false,
-            myQuest2_2Completed: false,
-            myQuest2_3Completed: false,
-            opponentQuest1_1Completed: false,
-            opponentQuest1_2Completed: false,
-            opponentQuest1_3Completed: false,
-            opponentQuest2_1Completed: false,
-            opponentQuest2_2Completed: false,
-            opponentQuest2_3Completed: false,
-          )), ),// No extra comma here
-      result: map['result'] as String,
-      scoreOutOf20: map['scoreOutOf20'] as int,
+        ).toList() ?? List.generate(
+            5,
+            (index) => Round(
+              roundNumber: index + 1,
+              myScore: 0,
+              opponentScore: 0,
+              priorityPlayerId: null,
+              myQuest1_1Completed: false,
+              myQuest1_2Completed: false,
+              myQuest1_3Completed: false,
+              myQuest2_1Completed: false,
+              myQuest2_2Completed: false,
+              myQuest2_3Completed: false,
+              opponentQuest1_1Completed: false,
+              opponentQuest1_2Completed: false,
+              opponentQuest1_3Completed: false,
+              opponentQuest2_1Completed: false,
+              opponentQuest2_2Completed: false,
+              opponentQuest2_3Completed: false,
+            ),
+          ),
+      ),
+      result: map['result'] as String? ?? 'En cours',
+      scoreOutOf20: map['scoreOutOf20'] as int? ?? 0,
       notes: map['notes'] as String?,
+      gameState: map['gameState'] != null
+          ? GameState.values.firstWhere(
+              (e) => e.name == map['gameState'],
+              orElse: () => GameState.setup, // Default if not found (e.g., old data)
+            )
+          : GameState.setup, // NEW: Default to setup if not in map
     );
+  }
+
+  static String determineResult(int myScore, int opponentScore) {
+    if (myScore > opponentScore) {
+      return 'Victoire';
+    } else if (myScore < opponentScore) {
+      return 'Défaite';
+    } else {
+      return 'Égalité';
+    }
+  }
+
+  static int calculateScoreOutOf20(int myScore, int opponentScore) {
+    int totalScore = myScore + opponentScore;
+    if (totalScore == 0) return 10;
+    double myNormalizedScore = (myScore / totalScore) * 10;
+    return (myNormalizedScore + 5).round();
   }
 }

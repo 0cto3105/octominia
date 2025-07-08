@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:octominia/models/game.dart';
 import 'package:octominia/services/game_json_storage.dart';
-import 'package:octominia/screens/add_game_screen.dart';
+import 'package:octominia/screens/add_game_screen.dart'; // Assurez-vous que cette ligne est présente
+import 'package:octominia/screens/game_summary_screen.dart'; // Import the GameSummaryScreen (conserver pour l'instant si nécessaire ailleurs)
 import 'dart:developer' as developer;
 
 class GamesScreen extends StatefulWidget {
@@ -136,6 +137,25 @@ class _GamesScreenState extends State<GamesScreen> {
     return result.replaceAll('_', ' ').toUpperCase();
   }
 
+  // --- FONCTION MODIFIÉE POUR GÉRER LE CLIC SUR UNE CARTE DE PARTIE ---
+  void _handleGameTap(Game game) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AddGameScreen( // CHANGEMENT ICI : Ouvrir AddGameScreen
+          initialGame: game, // Passer la partie existante pour édition
+          onGameSaved: (Game savedGame) {
+            // Callback déclenché après la sauvegarde d'une partie éditée.
+            // On recharge les parties pour rafraîchir la liste si des modifications ont eu lieu.
+            _loadGames();
+          },
+        ),
+      ),
+    );
+    // Après être revenu de AddGameScreen, rechargez les parties au cas où des modifications
+    // (comme la suppression ou la mise à jour) auraient été faites.
+    _loadGames();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,187 +200,190 @@ class _GamesScreenState extends State<GamesScreen> {
                       name: 'GamesScreen.CardBuilder',
                     );
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 4.0),
-                      elevation: 4.0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15.0),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      color: Theme.of(context).cardColor,
-                      child: SizedBox(
-                        height: 140, // Hauteur de la carte conservée
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: SizedBox.expand(
-                                    child: Opacity(
-                                      opacity: 0.12,
-                                      child: (game.myFactionImageUrl != null && game.myFactionImageUrl!.isNotEmpty)
-                                          ? Image.asset(
-                                              game.myFactionImageUrl!,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) {
-                                                developer.log('ERREUR: Impossible de charger l\'image : ${game.myFactionImageUrl}', error: error, name: 'GamesScreen.ImageError');
-                                                return Container(color: Colors.transparent, width: double.infinity, height: double.infinity);
-                                              },
-                                            )
-                                          : Container(color: Colors.transparent, width: double.infinity, height: double.infinity),
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: SizedBox.expand(
-                                    child: Opacity(
-                                      opacity: 0.12,
-                                      child: (game.opponentFactionImageUrl != null && game.opponentFactionImageUrl!.isNotEmpty)
-                                          ? Image.asset(
-                                              game.opponentFactionImageUrl!,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) {
-                                                developer.log('ERREUR: Impossible de charger l\'image : ${game.opponentFactionImageUrl}', error: error, name: 'GamesScreen.ImageError');
-                                                return Container(color: Colors.transparent, width: double.infinity, height: double.infinity);
-                                              },
-                                            )
-                                          : Container(color: Colors.transparent, width: double.infinity, height: double.infinity),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                    return InkWell( // Wrap the Card with InkWell for tap detection
+                      onTap: () => _handleGameTap(game),
+                      child: Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4.0),
+                        elevation: 4.0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15.0),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        color: Theme.of(context).cardColor,
+                        child: SizedBox(
+                          height: 140, // Hauteur de la carte conservée
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Row(
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        formattedDate,
-                                        style: TextStyle(
-                                          fontSize: 12.0,
-                                          fontWeight: FontWeight.normal,
-                                          color: Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey[500],
-                                        ),
+                                  Expanded(
+                                    child: SizedBox.expand(
+                                      child: Opacity(
+                                        opacity: 0.12,
+                                        child: (game.myFactionImageUrl != null && game.myFactionImageUrl!.isNotEmpty)
+                                            ? Image.asset(
+                                                game.myFactionImageUrl!,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) {
+                                                  developer.log('ERREUR: Impossible de charger l\'image : ${game.myFactionImageUrl}', error: error, name: 'GamesScreen.ImageError');
+                                                  return Container(color: Colors.transparent, width: double.infinity, height: double.infinity);
+                                                },
+                                              )
+                                            : Container(color: Colors.transparent, width: double.infinity, height: double.infinity),
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                  Spacer(), // Pousse la Row suivante vers le bas
-                                  Row(
-                                    // *** NOUVELLE STRUCTURE POUR LE CENTRAGE HORIZONTAL DES 3 BLOCS ***
-                                    mainAxisAlignment: MainAxisAlignment.center, // Centrer le contenu global de cette Row
-                                    crossAxisAlignment: CrossAxisAlignment.center, // Centrage vertical des éléments dans cette Row
-                                    children: [
-                                      // Bloc "Moi" (ALIGNÉ À GAUCHE DANS SON Expanded)
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start, // ALIGNEMENT À GAUCHE
-                                          mainAxisAlignment: MainAxisAlignment.center, // Centrage vertical dans la colonne
-                                          children: [
-                                            Text(
-                                              game.myPlayerName,
-                                              style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color ?? Colors.white),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            Text(
-                                              game.myFactionName ?? 'Faction Inconnue',
-                                              style: TextStyle(fontSize: 12.0, color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        ),
+                                  Expanded(
+                                    child: SizedBox.expand(
+                                      child: Opacity(
+                                        opacity: 0.12,
+                                        child: (game.opponentFactionImageUrl != null && game.opponentFactionImageUrl!.isNotEmpty)
+                                            ? Image.asset(
+                                                game.opponentFactionImageUrl!,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) {
+                                                  developer.log('ERREUR: Impossible de charger l\'image : ${game.opponentFactionImageUrl}', error: error, name: 'GamesScreen.ImageError');
+                                                  return Container(color: Colors.transparent, width: double.infinity, height: double.infinity);
+                                                },
+                                              )
+                                            : Container(color: Colors.transparent, width: double.infinity, height: double.infinity),
                                       ),
-                                      const SizedBox(width: 8.0), // Espacement entre les blocs
-                                      // Bloc de Scoring (TOUJOURS BIEN CENTRÉ)
-                                      Column(
-                                        mainAxisAlignment: MainAxisAlignment.center, // Centrage vertical dans la colonne
-                                        crossAxisAlignment: CrossAxisAlignment.center, // ALIGNEMENT AU CENTRE pour le texte du scoring
-                                        children: [
-                                          Text(
-                                            '${game.scoreOutOf20}/20',
-                                            style: TextStyle(
-                                              fontSize: 24.0,
-                                              fontWeight: FontWeight.bold,
-                                              color: Theme.of(context).colorScheme.secondary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2.0),
-                                          Text(
-                                            '$myScoreText - $opponentScoreText',
-                                            style: TextStyle(
-                                              fontSize: 14.0,
-                                              fontWeight: FontWeight.w600,
-                                              color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2.0),
-                                          Text(
-                                            formattedResult,
-                                            style: TextStyle(
-                                              fontSize: 14.0,
-                                              fontWeight: FontWeight.bold,
-                                              color: resultColor,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(width: 8.0), // Espacement entre les blocs
-                                      // Bloc "Adversaire" (ALIGNÉ À DROITE DANS SON Expanded)
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.end, // ALIGNEMENT À DROITE
-                                          mainAxisAlignment: MainAxisAlignment.center, // Centrage vertical dans la colonne
-                                          children: [
-                                            Text(
-                                              game.opponentPlayerName,
-                                              style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color ?? Colors.white),
-                                              textAlign: TextAlign.end, // Important pour l'alignement du texte lui-même
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            Text(
-                                              game.opponentFactionName ?? 'Faction Inconnue',
-                                              style: TextStyle(fontSize: 12.0, color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70),
-                                              textAlign: TextAlign.end, // Important pour l'alignement du texte lui-même
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
-                                  Spacer(), // Pousse la Row précédente vers le haut
                                 ],
                               ),
-                            ),
-                          ],
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          formattedDate,
+                                          style: TextStyle(
+                                            fontSize: 12.0,
+                                            fontWeight: FontWeight.normal,
+                                            color: Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey[500],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const Spacer(), // Pousse la Row suivante vers le bas
+                                    Row(
+                                      // *** NOUVELLE STRUCTURE POUR LE CENTRAGE HORIZONTAL DES 3 BLOCS ***
+                                      mainAxisAlignment: MainAxisAlignment.center, // Centrer le contenu global de cette Row
+                                      crossAxisAlignment: CrossAxisAlignment.center, // Centrage vertical des éléments dans cette Row
+                                      children: [
+                                        // Bloc "Moi" (ALIGNÉ À GAUCHE DANS SON Expanded)
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start, // ALIGNEMENT À GAUCHE
+                                            mainAxisAlignment: MainAxisAlignment.center, // Centrage vertical dans la colonne
+                                            children: [
+                                              Text(
+                                                game.myPlayerName,
+                                                style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color ?? Colors.white),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              Text(
+                                                game.myFactionName ?? 'Faction Inconnue',
+                                                style: TextStyle(fontSize: 12.0, color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8.0), // Espacement entre les blocs
+                                        // Bloc de Scoring (TOUJOURS BIEN CENTRÉ)
+                                        Column(
+                                          mainAxisAlignment: MainAxisAlignment.center, // Centrage vertical dans la colonne
+                                          crossAxisAlignment: CrossAxisAlignment.center, // ALIGNEMENT AU CENTRE pour le texte du scoring
+                                          children: [
+                                            Text(
+                                              '${game.scoreOutOf20}/20',
+                                              style: TextStyle(
+                                                fontSize: 24.0,
+                                                fontWeight: FontWeight.bold,
+                                                color: Theme.of(context).colorScheme.secondary,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2.0),
+                                            Text(
+                                              '$myScoreText - $opponentScoreText',
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.w600,
+                                                color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2.0),
+                                            Text(
+                                              formattedResult,
+                                              style: TextStyle(
+                                                fontSize: 14.0,
+                                                fontWeight: FontWeight.bold,
+                                                color: resultColor,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(width: 8.0), // Espacement entre les blocs
+                                        // Bloc "Adversaire" (ALIGNÉ À DROITE DANS SON Expanded)
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.end, // ALIGNEMENT À DROITE
+                                            mainAxisAlignment: MainAxisAlignment.center, // Centrage vertical dans la colonne
+                                            children: [
+                                              Text(
+                                                game.opponentPlayerName,
+                                                style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color ?? Colors.white),
+                                                textAlign: TextAlign.end, // Important pour l'alignement du texte lui-même
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              Text(
+                                                game.opponentFactionName ?? 'Faction Inconnue',
+                                                style: TextStyle(fontSize: 12.0, color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70),
+                                                textAlign: TextAlign.end, // Important pour l'alignement du texte lui-même
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const Spacer(), // Pousse la Row précédente vers le haut
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
                   },
                 ),
-floatingActionButton: FloatingActionButton(
-  onPressed: () async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => AddGameScreen(
-          initialGame: null, // Indique que c'est une nouvelle partie
-          onGameSaved: (Game savedGame) {
-            // Callback déclenché après la sauvegarde d'une nouvelle partie
-            // ou la mise à jour d'une partie existante.
-            _loadGames(); // Rechargez toutes les parties pour rafraîchir la liste.
-          },
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => AddGameScreen(
+                initialGame: null, // Indique que c'est une nouvelle partie
+                onGameSaved: (Game savedGame) {
+                  // Callback déclenché après la sauvegarde d'une nouvelle partie
+                  // ou la mise à jour d'une partie existante.
+                  _loadGames(); // Rechargez toutes les parties pour rafraîchir la liste.
+                },
+              ),
+            ),
+          );
+        },
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+        foregroundColor: Colors.black,
+        child: const Icon(Icons.add),
       ),
-    );
-  },
-  backgroundColor: Theme.of(context).colorScheme.secondary,
-  foregroundColor: Colors.black,
-  child: const Icon(Icons.add),
-),
     );
   }
 }

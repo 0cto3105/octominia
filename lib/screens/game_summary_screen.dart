@@ -1,4 +1,5 @@
 // lib/screens/game_summary_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:octominia/models/game.dart';
 import 'package:octominia/models/round.dart';
@@ -44,73 +45,69 @@ class GameSummaryScreen extends StatelessWidget {
     );
   }
 
+  // Fonction d'aide pour afficher les détails du tour
+  Widget _buildRoundDetails(BuildContext context, Round round, String myPlayerName, String opponentPlayerName) {
+    int myRoundTotal = round.calculatePlayerTotalScore(true);
+    int opponentRoundTotal = round.calculatePlayerTotalScore(false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            'Tour ${round.roundNumber}',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color),
+          ),
+        ),
+        _buildInfoRow(context, 'Priorité:', round.priorityPlayerId == 'me' ? myPlayerName : (round.priorityPlayerId == 'opponent' ? opponentPlayerName : 'Non défini')),
+        _buildInfoRow(context, '$myPlayerName Score:', myRoundTotal.toString()),
+        _buildInfoRow(context, '$opponentPlayerName Score:', opponentRoundTotal.toString()),
+        const SizedBox(height: 10),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final int myTotalScore = game.rounds.fold(0, (sum, round) => sum + round.myScore);
-    final int opponentTotalScore = game.rounds.fold(0, (sum, round) => sum + round.opponentScore);
+    int myTotalScore = 0;
+    int opponentTotalScore = 0;
+    for (var round in game.rounds) {
+      myTotalScore += round.calculatePlayerTotalScore(true);
+      opponentTotalScore += round.calculatePlayerTotalScore(false);
+    }
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: SingleChildScrollView(
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Résumé de la Partie',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color),
-            ),
+            _buildSectionTitle(context, 'Informations Générales'),
+            _buildInfoRow(context, 'Date:', game.date.toLocal().toString().split(' ')[0]),
+            _buildInfoRow(context, 'Mon Joueur:', '${game.myPlayerName} (${game.myFactionName})'),
+            _buildInfoRow(context, 'Mon Score Total:', myTotalScore.toString()),
+            _buildInfoRow(context, 'Adversaire:', '${game.opponentPlayerName} (${game.opponentFactionName})'),
+            _buildInfoRow(context, 'Adversaire Score Total:', opponentTotalScore.toString()),
             const SizedBox(height: 20),
 
-            _buildSectionTitle(context, 'Informations Générales'), // context used
-            _buildInfoRow(context, 'Date:', game.date.toLocal().toString().split(' ')[0]), // context used
-            _buildInfoRow(context, 'Mon Nom:', game.myPlayerName), // context used
-            _buildInfoRow(context, 'Ma Faction:', game.myFactionName), // context used
-            _buildInfoRow(context, 'Mes Drops:', game.myDrops.toString()), // context used
-            _buildInfoRow(context, 'Mes Auxiliaires:', game.myAuxiliaryUnits ? 'Oui' : 'Non'), // context used
-            _buildInfoRow(context, 'Nom Opponent:', game.opponentPlayerName), // context used
-            _buildInfoRow(context, 'Faction Opponent:', game.opponentFactionName), // context used
-            _buildInfoRow(context, 'Drops Opponent:', game.opponentDrops.toString()), // context used
-            _buildInfoRow(context, 'Auxiliaires Opponent:', game.opponentAuxiliaryUnits ? 'Oui' : 'Non'), // context used
+            _buildSectionTitle(context, 'Détails des Tours'),
+            ...game.rounds.map((round) => _buildRoundDetails(context, round, game.myPlayerName, game.opponentPlayerName)),
             const SizedBox(height: 20),
 
-            _buildSectionTitle(context, 'Roll Offs & Priorité'), // context used
-            _buildInfoRow(
-              context, // context used
-              'Attaquant:',
-              game.attackerPlayerId == 'me' ? game.myPlayerName : (game.attackerPlayerId == 'opponent' ? game.opponentPlayerName : 'Non défini'),
-            ),
-            _buildInfoRow(
-              context, // context used
-              'Priorité Tour 1:',
-              game.priorityPlayerIdRound1 == 'me' ? game.myPlayerName : (game.priorityPlayerIdRound1 == 'opponent' ? game.opponentPlayerName : 'Non défini'),
-            ),
-            const SizedBox(height: 20),
-
-            _buildSectionTitle(context, 'Scores par Tour'), // context used
-            ...game.rounds.map((round) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Text(
-                  'Tour ${round.roundNumber}: ${game.myPlayerName} ${round.myScore} - ${game.opponentPlayerName} ${round.opponentScore}',
-                  style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyMedium?.color),
-                ),
-              );
-            }).toList(),
-            const SizedBox(height: 20),
-
-            _buildSectionTitle(context, 'Totaux et Résultat'), // context used
-            _buildInfoRow(context, 'Score Total ${game.myPlayerName}:', myTotalScore.toString()), // context used
-            _buildInfoRow(context, 'Score Total ${game.opponentPlayerName}:', opponentTotalScore.toString()), // context used
-            _buildInfoRow(context, 'Résultat de la Partie:', game.result.isEmpty ? Game.determineResult(myTotalScore, opponentTotalScore) : game.result), // context used
-            _buildInfoRow(context, 'Score /20:', game.scoreOutOf20.toString()), // context used
+            _buildSectionTitle(context, 'Résumé Final'),
+            _buildInfoRow(context, '${game.myPlayerName}:', myTotalScore.toString()),
+            _buildInfoRow(context, '${game.opponentPlayerName}:', opponentTotalScore.toString()),
+            _buildInfoRow(context, 'Résultat de la Partie:', game.result.isEmpty ? Game.determineResult(myTotalScore, opponentTotalScore) : game.result),
+            _buildInfoRow(context, 'Score /20:', game.scoreOutOf20.toString()),
             const SizedBox(height: 30),
 
             if (game.notes != null && game.notes!.isNotEmpty)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionTitle(context, 'Notes'), // context used
-                  _buildInfoRow(context, 'Notes:', game.notes!), // context used
+                  _buildSectionTitle(context, 'Notes'),
+                  _buildInfoRow(context, 'Notes:', game.notes!),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -118,8 +115,8 @@ class GameSummaryScreen extends StatelessWidget {
             Center(
               child: ElevatedButton.icon(
                 onPressed: onSave,
-                icon: const Icon(Icons.save),
-                label: const Text('Sauvegarder la Partie'),
+                icon: const Icon(Icons.check), // Icône changée pour 'check' (validation)
+                label: const Text('Finaliser la Partie'), // TEXTE DU BOUTON CHANGÉ
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,

@@ -13,11 +13,13 @@ import 'package:octominia/screens/game_summary_screen.dart';
 class AddGameScreen extends StatefulWidget {
   final Game? initialGame;
   final Function(Game game) onGameSaved;
+  final int? initialPageIndex;
 
   const AddGameScreen({
     super.key,
     this.initialGame,
     required this.onGameSaved,
+    this.initialPageIndex,
   });
 
   @override
@@ -25,15 +27,20 @@ class AddGameScreen extends StatefulWidget {
 }
 
 class _AddGameScreenState extends State<AddGameScreen> {
-  final PageController _pageController = PageController();
+  late PageController _pageController;
   int _currentPageIndex = 0;
   late Game _newGame;
   bool _gameInitiallySaved = false;
   final GameJsonStorage _gameStorage = GameJsonStorage();
 
-  @override
+ @override
   void initState() {
     super.initState();
+    // =========================================================================
+    // >>> SEULEMENT CETTE LIGNE DOIT ÊTRE PRÉSENTE AU DÉBUT DE INITSTATE <<<
+    print('DEBUG: initState de AddGameScreen appelé !');
+    // =========================================================================
+
     _newGame = widget.initialGame ?? Game(
       id: const Uuid().v4(),
       date: DateTime.now(),
@@ -43,8 +50,8 @@ class _AddGameScreenState extends State<AddGameScreen> {
       opponentFactionName: '',
       myScore: 0,
       opponentScore: 0,
-      myDrops: 1, // Initialisation à 1 (entre 1 et 5)
-      opponentDrops: 1, // Initialisation à 1 (entre 1 et 5)
+      myDrops: 1,
+      opponentDrops: 1,
       myAuxiliaryUnits: false,
       opponentAuxiliaryUnits: false,
       rounds: List.generate(
@@ -70,10 +77,57 @@ class _AddGameScreenState extends State<AddGameScreen> {
       ),
       result: 'En cours',
       scoreOutOf20: 0,
+      gameState: GameState.setup,
     );
     _gameInitiallySaved = widget.initialGame != null;
-  }
 
+    int startingPageIndex = widget.initialPageIndex ?? 0;
+
+    if (widget.initialGame != null) {
+      // Si cette ligne ci-dessous n'apparaît pas, c'est que le widget.initialGame est null,
+      // ce qui signifie que vous ouvrez peut-être une nouvelle partie et non une partie existante.
+      print('DEBUG: initialGame n\'est PAS null. GameState: ${_newGame.gameState}, Résultat: ${_newGame.result}');
+
+      switch (_newGame.gameState) {
+        case GameState.setup:
+          startingPageIndex = 0;
+          break;
+        case GameState.rollOffs:
+          startingPageIndex = 1;
+          break;
+        case GameState.round1:
+          startingPageIndex = 2;
+          break;
+        case GameState.round2:
+          startingPageIndex = 3;
+          break;
+        case GameState.round3:
+          startingPageIndex = 4;
+          break;
+        case GameState.round4:
+          startingPageIndex = 5;
+          break;
+        case GameState.round5:
+          startingPageIndex = 6;
+          break;
+        case GameState.summary:
+          startingPageIndex = 6; // Retourne au Tour 5 pour permettre l'édition
+          break;
+        case GameState.completed:
+          startingPageIndex = 7;
+          break;
+        default:
+          startingPageIndex = 0;
+          break;
+      }
+    } else {
+      print('DEBUG: initialGame est null. C\'est une nouvelle partie.');
+    }
+
+
+    _currentPageIndex = startingPageIndex;
+    _pageController = PageController(initialPage: _currentPageIndex);
+  }
   @override
   void dispose() {
     _pageController.dispose();
@@ -92,8 +146,6 @@ class _AddGameScreenState extends State<AddGameScreen> {
       _newGame = _newGame.copyWith(
         myScore: myTotalScore,
         opponentScore: opponentTotalScore,
-        result: Game.determineResult(myTotalScore, opponentTotalScore),
-        scoreOutOf20: Game.calculateScoreOutOf20(myTotalScore, opponentTotalScore),
       );
     });
     if (_gameInitiallySaved) {
@@ -117,8 +169,6 @@ class _AddGameScreenState extends State<AddGameScreen> {
         _newGame = _newGame.copyWith(
           myScore: myTotalScore,
           opponentScore: opponentTotalScore,
-          result: Game.determineResult(myTotalScore, opponentTotalScore),
-          scoreOutOf20: Game.calculateScoreOutOf20(myTotalScore, opponentTotalScore),
         );
       }
     });
@@ -134,16 +184,8 @@ class _AddGameScreenState extends State<AddGameScreen> {
         setState(() {
           _gameInitiallySaved = true;
         });
-        // Suppression du feedback visuel
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   const SnackBar(content: Text('Partie initialisée et sauvegardée !')),
-        // );
       } else {
         await _gameStorage.updateGame(_newGame);
-        // Suppression du feedback visuel
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   const SnackBar(content: Text('Partie mise à jour !')),
-        // );
       }
       widget.onGameSaved(_newGame);
     } catch (e) {
@@ -154,6 +196,7 @@ class _AddGameScreenState extends State<AddGameScreen> {
   }
 
   void _nextPage() {
+    // Validation for GameSetupScreen (page 0)
     if (_currentPageIndex == 0) {
       if (_newGame.myFactionName.isEmpty || _newGame.opponentFactionName.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -161,8 +204,10 @@ class _AddGameScreenState extends State<AddGameScreen> {
         );
         return;
       }
+      // No change to gameState here, it remains GameState.setup until roll-offs
     }
 
+    // Validation for GameRollOffsScreen (page 1)
     if (_currentPageIndex == 1) {
       if (_newGame.attackerPlayerId == null || _newGame.priorityPlayerIdRound1 == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -171,20 +216,39 @@ class _AddGameScreenState extends State<AddGameScreen> {
         return;
       }
       if (!_gameInitiallySaved) {
-        _saveGame();
+        _saveGame(); // Save after initial setup and roll-offs are complete
       }
+      // GameState is updated below in the general case, after incrementing _currentPageIndex
     }
 
-    if (_currentPageIndex < 5) {
+    if (_currentPageIndex < 7) { // If not on the last page (Summary - index 7)
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.ease,
       );
       setState(() {
         _currentPageIndex++;
+        // Update gameState based on the new currentPageIndex
+        switch (_currentPageIndex) {
+          case 2: _newGame = _newGame.copyWith(gameState: GameState.round1); break;
+          case 3: _newGame = _newGame.copyWith(gameState: GameState.round2); break;
+          case 4: _newGame = _newGame.copyWith(gameState: GameState.round3); break;
+          case 5: _newGame = _newGame.copyWith(gameState: GameState.round4); break;
+          case 6: _newGame = _newGame.copyWith(gameState: GameState.round5); break;
+          case 7: _newGame = _newGame.copyWith(gameState: GameState.summary); break; // Reached summary screen
+        }
       });
-    } else if (_currentPageIndex == 5) {
-      // Sur l'écran de résumé, le bouton de sauvegarde gère la sauvegarde finale.
+    } else if (_currentPageIndex == 7) {
+      // On the summary screen, the "Finaliser la Partie" button (which is _nextPage)
+      setState(() {
+        _newGame = _newGame.copyWith(
+          result: Game.determineResult(_newGame.myScore, _newGame.opponentScore),
+          scoreOutOf20: Game.calculateScoreOutOf20(_newGame.myScore, _newGame.opponentScore),
+          gameState: GameState.completed, // Mark as completed
+        );
+      });
+      _saveGame(); // Final save
+      Navigator.of(context).pop(); // Exit AddGameScreen
     }
   }
 
@@ -196,10 +260,27 @@ class _AddGameScreenState extends State<AddGameScreen> {
       );
       setState(() {
         _currentPageIndex--;
+        // Update gameState based on the new currentPageIndex
+        switch (_currentPageIndex) {
+          case 0: _newGame = _newGame.copyWith(gameState: GameState.setup); break;
+          case 1: _newGame = _newGame.copyWith(gameState: GameState.rollOffs); break;
+          case 2: _newGame = _newGame.copyWith(gameState: GameState.round1); break;
+          case 3: _newGame = _newGame.copyWith(gameState: GameState.round2); break;
+          case 4: _newGame = _newGame.copyWith(gameState: GameState.round3); break;
+          case 5: _newGame = _newGame.copyWith(gameState: GameState.round4); break;
+          case 6: _newGame = _newGame.copyWith(gameState: GameState.round5); break;
+          // If going back from summary, it should land on Round 5
+          // case 7: _newGame = _newGame.copyWith(gameState: GameState.summary); break; // This case is not reachable by _previousPage to index 7
+        }
       });
     } else {
+      // If on the first page and pressing back, pop the screen
       Navigator.of(context).pop();
     }
+  }
+
+  void _returnToList() {
+    Navigator.of(context).pop();
   }
 
   @override
@@ -222,79 +303,109 @@ class _AddGameScreenState extends State<AddGameScreen> {
         appBarTitle = 'Tour 3';
         break;
       case 5:
+        appBarTitle = 'Tour 4';
+        break;
+      case 6:
+        appBarTitle = 'Tour 5';
+        break;
+      case 7:
         appBarTitle = 'Résumé de la Partie';
         break;
       default:
-        appBarTitle = 'Partie'; // Fallback
+        appBarTitle = 'Partie';
         break;
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(appBarTitle),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(),
-              onPageChanged: (index) {
-                setState(() {
-                  _currentPageIndex = index;
-                });
-              },
-              children: [
-                GameSetupScreen(
-                  game: _newGame,
-                  onUpdate: _updateGameData,
-                ),
-                GameRollOffsScreen(
-                  game: _newGame,
-                  onUpdate: _updateGameData,
-                ),
-                GameRoundScreen(
-                  game: _newGame,
-                  roundNumber: 1,
-                  onUpdateRound: _updateRoundData,
-                ),
-                GameRoundScreen(
-                  game: _newGame,
-                  roundNumber: 2,
-                  onUpdateRound: _updateRoundData,
-                ),
-                GameRoundScreen(
-                  game: _newGame,
-                  roundNumber: 3,
-                  onUpdateRound: _updateRoundData,
-                ),
-                GameSummaryScreen(
-                  game: _newGame,
-                  onSave: _saveGame,
-                ),
-              ],
+    return PopScope(
+      canPop: _currentPageIndex == 0,
+      onPopInvoked: (didPop) {
+        if (!didPop && _currentPageIndex > 0) {
+          _previousPage();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(appBarTitle),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Retour à la liste des parties',
+              onPressed: _returnToList,
             ),
-          ),
-          // Les boutons seront désormais en bas, à l'intérieur d'un SafeArea
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ],
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(), // Disable swiping
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentPageIndex = index;
+                  });
+                },
                 children: [
-                  ElevatedButton(
-                    onPressed: _previousPage,
-                    child: const Text('Précédent'),
+                  GameSetupScreen(
+                    game: _newGame,
+                    onUpdate: _updateGameData,
                   ),
-                  ElevatedButton(
-                    onPressed: _nextPage,
-                    child: Text(_currentPageIndex == 5 ? 'Terminer' : 'Suivant'),
+                  GameRollOffsScreen(
+                    game: _newGame,
+                    onUpdate: _updateGameData,
+                  ),
+                  GameRoundScreen(
+                    game: _newGame,
+                    roundNumber: 1,
+                    onUpdateRound: _updateRoundData,
+                  ),
+                  GameRoundScreen(
+                    game: _newGame,
+                    roundNumber: 2,
+                    onUpdateRound: _updateRoundData,
+                  ),
+                  GameRoundScreen(
+                    game: _newGame,
+                    roundNumber: 3,
+                    onUpdateRound: _updateRoundData,
+                  ),
+                  GameRoundScreen(
+                    game: _newGame,
+                    roundNumber: 4,
+                    onUpdateRound: _updateRoundData,
+                  ),
+                  GameRoundScreen(
+                    game: _newGame,
+                    roundNumber: 5,
+                    onUpdateRound: _updateRoundData,
+                  ),
+                  GameSummaryScreen(
+                    game: _newGame,
+                    onSave: _nextPage, // This will now trigger the 'Finaliser la Partie' logic
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _previousPage,
+                      child: const Text('Précédent'),
+                    ),
+                    ElevatedButton(
+                      onPressed: _nextPage,
+                      child: Text(_currentPageIndex == 7 ? 'Finaliser la Partie' : 'Suivant'), // Updated button text for summary screen
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
