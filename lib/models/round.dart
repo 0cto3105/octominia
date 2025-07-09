@@ -1,5 +1,7 @@
 // lib/models/round.dart
 
+import 'package:octominia/models/quest.dart'; // Importer la nouvelle classe Quest
+
 class Round {
   int roundNumber;
   int myScore; // Score primaire (0-10) pour mon joueur
@@ -7,25 +9,11 @@ class Round {
   String? priorityPlayerId; // 'me' or 'opponent'
   String? initiativePlayerId; // 'me' ou 'opponent' pour le jet d'initiative
 
-  // Mes quêtes (Suite 1)
-  bool myQuest1_1Completed; // Ma quête 1 de la suite 1
-  bool myQuest1_2Completed; // Ma quête 2 de la suite 1
-  bool myQuest1_3Completed; // Ma quête 3 de la suite 1
-
-  // Mes quêtes (Suite 2)
-  bool myQuest2_1Completed; // Ma quête 1 de la suite 2
-  bool myQuest2_2Completed; // Ma quête 2 de la suite 2
-  bool myQuest2_3Completed; // Ma quête 3 de la suite 2
-
-  // Quêtes de l'adversaire (Suite 1)
-  bool opponentQuest1_1Completed; // Sa quête 1 de la suite 1
-  bool opponentQuest1_2Completed; // Sa quête 2 de la suite 1
-  bool opponentQuest1_3Completed; // Sa quête 3 de la suite 1
-
-  // Quêtes de l'adversaire (Suite 2)
-  bool opponentQuest2_1Completed;
-  bool opponentQuest2_2Completed;
-  bool opponentQuest2_3Completed;
+  // Remplacer les booléens individuels par des listes de Quest
+  List<Quest> myQuestsSuite1;
+  List<Quest> myQuestsSuite2;
+  List<Quest> opponentQuestsSuite1;
+  List<Quest> opponentQuestsSuite2;
 
   // NOUVEAU : États liés au double tour et à l'underdog, persistés par round
   String? underdogPlayerIdAtEndOfRound; // 'me' ou 'opponent' si un underdog a été désigné à la fin de CE round
@@ -40,25 +28,33 @@ class Round {
     required this.opponentScore,
     this.priorityPlayerId,
     this.initiativePlayerId,
-    this.myQuest1_1Completed = false,
-    this.myQuest1_2Completed = false,
-    this.myQuest1_3Completed = false,
-    this.myQuest2_1Completed = false,
-    this.myQuest2_2Completed = false,
-    this.myQuest2_3Completed = false,
-    this.opponentQuest1_1Completed = false,
-    this.opponentQuest1_2Completed = false,
-    this.opponentQuest1_3Completed = false,
-    this.opponentQuest2_1Completed = false,
-    this.opponentQuest2_2Completed = false,
-    this.opponentQuest2_3Completed = false,
+    // Initialisation des listes de quêtes
+    List<Quest>? myQuestsSuite1,
+    List<Quest>? myQuestsSuite2,
+    List<Quest>? opponentQuestsSuite1,
+    List<Quest>? opponentQuestsSuite2,
     // NOUVEAU : Initialisation des nouvelles propriétés
     this.underdogPlayerIdAtEndOfRound,
     this.myPlayerHadDoubleFreeTurn = false,
     this.opponentPlayerHadDoubleFreeTurn = false,
     this.myPlayerDidNonFreeDoubleTurn = false,
     this.opponentPlayerDidNonFreeDoubleTurn = false,
-  });
+  })  : myQuestsSuite1 = myQuestsSuite1 ?? _createInitialQuests(isMyPlayer: true, suiteNumber: 1),
+        myQuestsSuite2 = myQuestsSuite2 ?? _createInitialQuests(isMyPlayer: true, suiteNumber: 2),
+        opponentQuestsSuite1 = opponentQuestsSuite1 ?? _createInitialQuests(isMyPlayer: false, suiteNumber: 1),
+        opponentQuestsSuite2 = opponentQuestsSuite2 ?? _createInitialQuests(isMyPlayer: false, suiteNumber: 2);
+
+  // Helper pour créer les quêtes initiales avec la première débloquée
+  static List<Quest> _createInitialQuests({required bool isMyPlayer, required int suiteNumber}) {
+    final List<String> questNames = ["Affray", "Strike", "Domination"];
+    return List.generate(3, (index) {
+      return Quest(
+        id: (isMyPlayer ? 0 : 6) + (suiteNumber == 1 ? 0 : 3) + index + 1, // IDs uniques pour chaque quête
+        name: questNames[index],
+        status: index == 0 ? QuestStatus.unlocked : QuestStatus.locked, // La première quête de chaque suite est débloquée
+      );
+    });
+  }
 
   Round copyWith({
     int? roundNumber,
@@ -66,18 +62,10 @@ class Round {
     int? opponentScore,
     String? priorityPlayerId,
     String? initiativePlayerId,
-    bool? myQuest1_1Completed,
-    bool? myQuest1_2Completed,
-    bool? myQuest1_3Completed,
-    bool? myQuest2_1Completed,
-    bool? myQuest2_2Completed,
-    bool? myQuest2_3Completed,
-    bool? opponentQuest1_1Completed,
-    bool? opponentQuest1_2Completed,
-    bool? opponentQuest1_3Completed,
-    bool? opponentQuest2_1Completed,
-    bool? opponentQuest2_2Completed,
-    bool? opponentQuest2_3Completed,
+    List<Quest>? myQuestsSuite1,
+    List<Quest>? myQuestsSuite2,
+    List<Quest>? opponentQuestsSuite1,
+    List<Quest>? opponentQuestsSuite2,
     String? underdogPlayerIdAtEndOfRound,
     bool? myPlayerHadDoubleFreeTurn,
     bool? opponentPlayerHadDoubleFreeTurn,
@@ -90,19 +78,11 @@ class Round {
       opponentScore: opponentScore ?? this.opponentScore,
       priorityPlayerId: priorityPlayerId ?? this.priorityPlayerId,
       initiativePlayerId: initiativePlayerId ?? this.initiativePlayerId,
-      myQuest1_1Completed: myQuest1_1Completed ?? this.myQuest1_1Completed,
-      myQuest1_2Completed: myQuest1_2Completed ?? this.myQuest1_2Completed,
-      myQuest1_3Completed: myQuest1_3Completed ?? this.myQuest1_3Completed,
-      myQuest2_1Completed: myQuest2_1Completed ?? this.myQuest2_1Completed,
-      myQuest2_2Completed: myQuest2_2Completed ?? this.myQuest2_2Completed,
-      myQuest2_3Completed: myQuest2_3Completed ?? this.myQuest2_3Completed,
-      opponentQuest1_1Completed: opponentQuest1_1Completed ?? this.opponentQuest1_1Completed,
-      opponentQuest1_2Completed: opponentQuest1_2Completed ?? this.opponentQuest1_2Completed,
-      opponentQuest1_3Completed: opponentQuest1_3Completed ?? this.opponentQuest1_3Completed,
-      opponentQuest2_1Completed: opponentQuest2_1Completed ?? this.opponentQuest2_1Completed,
-      opponentQuest2_2Completed: opponentQuest2_2Completed ?? this.opponentQuest2_2Completed,
-      opponentQuest2_3Completed: opponentQuest2_3Completed ?? this.opponentQuest2_3Completed,
-      // NOUVEAU : Copie des nouvelles propriétés
+      myQuestsSuite1: myQuestsSuite1 ?? this.myQuestsSuite1.map((q) => q.copyWith()).toList(),
+      myQuestsSuite2: myQuestsSuite2 ?? this.myQuestsSuite2.map((q) => q.copyWith()).toList(),
+      opponentQuestsSuite1: opponentQuestsSuite1 ?? this.opponentQuestsSuite1.map((q) => q.copyWith()).toList(),
+      opponentQuestsSuite2: opponentQuestsSuite2 ?? this.opponentQuestsSuite2.map((q) => q.copyWith()).toList(),
+      // Copie des nouvelles propriétés
       underdogPlayerIdAtEndOfRound: underdogPlayerIdAtEndOfRound ?? this.underdogPlayerIdAtEndOfRound,
       myPlayerHadDoubleFreeTurn: myPlayerHadDoubleFreeTurn ?? this.myPlayerHadDoubleFreeTurn,
       opponentPlayerHadDoubleFreeTurn: opponentPlayerHadDoubleFreeTurn ?? this.opponentPlayerHadDoubleFreeTurn,
@@ -111,26 +91,95 @@ class Round {
     );
   }
 
+  // Méthode pour compléter une quête et débloquer la suivante
+  bool completeQuest(bool isMyPlayer, int suiteIndex, int questIndex) {
+    List<Quest> targetSuite;
+    if (isMyPlayer) {
+      targetSuite = (suiteIndex == 1) ? myQuestsSuite1 : myQuestsSuite2;
+    } else {
+      targetSuite = (suiteIndex == 1) ? opponentQuestsSuite1 : opponentQuestsSuite2;
+    }
+
+    if (questIndex >= 0 && questIndex < targetSuite.length) {
+      final quest = targetSuite[questIndex];
+      if (quest.status == QuestStatus.unlocked) {
+        quest.status = QuestStatus.completed;
+        // Débloquer la quête suivante si elle existe et n'est pas déjà débloquée/complétée
+        if (questIndex + 1 < targetSuite.length) {
+          final nextQuest = targetSuite[questIndex + 1];
+          if (nextQuest.status == QuestStatus.locked) {
+            nextQuest.status = QuestStatus.unlocked;
+          }
+        }
+        return true; // Quête complétée avec succès
+      } else {
+        // La quête n'est pas débloquée ou déjà complétée
+        return false;
+      }
+    }
+    return false; // Index de quête invalide
+  }
+
+  // Méthode pour décompléter une quête
+  bool uncompleteQuest(bool isMyPlayer, int suiteIndex, int questIndex) {
+    List<Quest> targetSuite;
+    if (isMyPlayer) {
+      targetSuite = (suiteIndex == 1) ? myQuestsSuite1 : myQuestsSuite2;
+    } else {
+      targetSuite = (suiteIndex == 1) ? opponentQuestsSuite1 : opponentQuestsSuite2;
+    }
+
+    if (questIndex >= 0 && questIndex < targetSuite.length) {
+      final quest = targetSuite[questIndex];
+      if (quest.status == QuestStatus.completed) {
+        // Vérifier si la quête suivante est complétée, si oui, on ne peut pas décocher
+        if (questIndex + 1 < targetSuite.length) {
+          final nextQuest = targetSuite[questIndex + 1];
+          if (nextQuest.status == QuestStatus.completed) {
+            return false; // Cannot uncomplete if next quest is completed
+          }
+           // Si la quête suivante était débloquée mais pas complétée, la re-verrouiller
+          if (nextQuest.status == QuestStatus.unlocked) {
+            nextQuest.status = QuestStatus.locked;
+          }
+        }
+        quest.status = QuestStatus.unlocked; // Revenir à l'état débloqué
+        return true; // Quête décomplétée avec succès
+      }
+    }
+    return false; // Index de quête invalide ou quête non complétée
+  }
+
+
   // Calculate total score for a player (primary + secondary)
   int calculatePlayerTotalScore(bool isMyPlayer) {
     int total = isMyPlayer ? myScore : opponentScore;
 
-    if (isMyPlayer) {
-      if (myQuest1_1Completed) total += 5; // Corrigé à 5 points
-      if (myQuest1_2Completed) total += 5; // Corrigé à 5 points
-      if (myQuest1_3Completed) total += 5; // Corrigé à 5 points
-      if (myQuest2_1Completed) total += 5; // Corrigé à 5 points
-      if (myQuest2_2Completed) total += 5; // Corrigé à 5 points
-      if (myQuest2_3Completed) total += 5; // Corrigé à 5 points
-    } else {
-      if (opponentQuest1_1Completed) total += 5; // Corrigé à 5 points
-      if (opponentQuest1_2Completed) total += 5; // Corrigé à 5 points
-      if (opponentQuest1_3Completed) total += 5; // Corrigé à 5 points
-      if (opponentQuest2_1Completed) total += 5; // Corrigé à 5 points
-      if (opponentQuest2_2Completed) total += 5; // Corrigé à 5 points
-      if (opponentQuest2_3Completed) total += 5; // Corrigé à 5 points
+    List<List<Quest>> allPlayerQuests = isMyPlayer
+        ? [myQuestsSuite1, myQuestsSuite2]
+        : [opponentQuestsSuite1, opponentQuestsSuite2];
+
+    for (var suite in allPlayerQuests) {
+      for (var quest in suite) {
+        if (quest.status == QuestStatus.completed) {
+          total += 5; // Chaque quête complétée rapporte 5 points
+        }
+      }
     }
     return total;
+  }
+
+  // Méthode pour déterminer l'underdog à la fin du round
+  String? determineUnderdogAtEndOfRound() {
+    int myTotalScore = calculatePlayerTotalScore(true);
+    int opponentTotalScore = calculatePlayerTotalScore(false);
+
+    if (myTotalScore < opponentTotalScore) {
+      return 'me';
+    } else if (opponentTotalScore < myTotalScore) {
+      return 'opponent';
+    }
+    return null; // Pas d'underdog si les scores sont égaux
   }
 
   Map<String, dynamic> toMap() {
@@ -140,19 +189,11 @@ class Round {
       'opponentScore': opponentScore,
       'priorityPlayerId': priorityPlayerId,
       'initiativePlayerId': initiativePlayerId,
-      'myQuest1_1Completed': myQuest1_1Completed,
-      'myQuest1_2Completed': myQuest1_2Completed,
-      'myQuest1_3Completed': myQuest1_3Completed,
-      'myQuest2_1Completed': myQuest2_1Completed,
-      'myQuest2_2Completed': myQuest2_2Completed,
-      'myQuest2_3Completed': myQuest2_3Completed,
-      'opponentQuest1_1Completed': opponentQuest1_1Completed,
-      'opponentQuest1_2Completed': opponentQuest1_2Completed,
-      'opponentQuest1_3Completed': opponentQuest1_3Completed,
-      'opponentQuest2_1Completed': opponentQuest2_1Completed,
-      'opponentQuest2_2Completed': opponentQuest2_2Completed,
-      'opponentQuest2_3Completed': opponentQuest2_3Completed,
-      // NOUVEAU : Sérialisation des nouvelles propriétés
+      'myQuestsSuite1': myQuestsSuite1.map((q) => q.toMap()).toList(),
+      'myQuestsSuite2': myQuestsSuite2.map((q) => q.toMap()).toList(),
+      'opponentQuestsSuite1': opponentQuestsSuite1.map((q) => q.toMap()).toList(),
+      'opponentQuestsSuite2': opponentQuestsSuite2.map((q) => q.toMap()).toList(),
+      // Sérialisation des nouvelles propriétés
       'underdogPlayerIdAtEndOfRound': underdogPlayerIdAtEndOfRound,
       'myPlayerHadDoubleFreeTurn': myPlayerHadDoubleFreeTurn,
       'opponentPlayerHadDoubleFreeTurn': opponentPlayerHadDoubleFreeTurn,
@@ -168,25 +209,28 @@ class Round {
       opponentScore: map['opponentScore'] as int? ?? 0,
       priorityPlayerId: map['priorityPlayerId'] as String?,
       initiativePlayerId: map['initiativePlayerId'] as String?,
-      // Lecture des valeurs avec des valeurs par défaut robustes
-      myQuest1_1Completed: map['myQuest1_1Completed'] as bool? ?? false,
-      myQuest1_2Completed: map['myQuest1_2Completed'] as bool? ?? false,
-      myQuest1_3Completed: map['myQuest1_3Completed'] as bool? ?? false,
-      myQuest2_1Completed: map['myQuest2_1Completed'] as bool? ?? false,
-      myQuest2_2Completed: map['myQuest2_2Completed'] as bool? ?? false,
-      myQuest2_3Completed: map['myQuest2_3Completed'] as bool? ?? false,
-      opponentQuest1_1Completed: map['opponentQuest1_1Completed'] as bool? ?? false,
-      opponentQuest1_2Completed: map['opponentQuest1_2Completed'] as bool? ?? false,
-      opponentQuest1_3Completed: map['opponentQuest1_3Completed'] as bool? ?? false,
-      opponentQuest2_1Completed: map['opponentQuest2_1Completed'] as bool? ?? false,
-      opponentQuest2_2Completed: map['opponent2_2Completed'] as bool? ?? false, // Corrigé
-      opponentQuest2_3Completed: map['opponentQuest2_3Completed'] as bool? ?? false, // Corrigé
-      // NOUVEAU : Désérialisation des nouvelles propriétés
+      myQuestsSuite1: (map['myQuestsSuite1'] as List<dynamic>?)
+              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>))
+              .toList() ??
+          _createInitialQuests(isMyPlayer: true, suiteNumber: 1),
+      myQuestsSuite2: (map['myQuestsSuite2'] as List<dynamic>?)
+              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>))
+              .toList() ??
+          _createInitialQuests(isMyPlayer: true, suiteNumber: 2),
+      opponentQuestsSuite1: (map['opponentQuestsSuite1'] as List<dynamic>?)
+              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>))
+              .toList() ??
+          _createInitialQuests(isMyPlayer: false, suiteNumber: 1),
+      opponentQuestsSuite2: (map['opponentQuestsSuite2'] as List<dynamic>?)
+              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>))
+              .toList() ??
+          _createInitialQuests(isMyPlayer: false, suiteNumber: 2),
+      // Désérialisation des nouvelles propriétés
       underdogPlayerIdAtEndOfRound: map['underdogPlayerIdAtEndOfRound'] as String?,
       myPlayerHadDoubleFreeTurn: map['myPlayerHadDoubleFreeTurn'] as bool? ?? false,
       opponentPlayerHadDoubleFreeTurn: map['opponentPlayerHadDoubleFreeTurn'] as bool? ?? false,
       myPlayerDidNonFreeDoubleTurn: map['myPlayerDidNonFreeDoubleTurn'] as bool? ?? false,
-      opponentPlayerDidNonFreeDoubleTurn: map['opponentDidNonFreeDoubleTurn'] as bool? ?? false, // Il semble qu'il y ait eu une faute de frappe ici dans le fichier fourni par l'utilisateur
+      opponentPlayerDidNonFreeDoubleTurn: map['opponentPlayerDidNonFreeDoubleTurn'] as bool? ?? false,
     );
   }
 }

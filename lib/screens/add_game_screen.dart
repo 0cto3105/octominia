@@ -61,18 +61,9 @@ class _AddGameScreenState extends State<AddGameScreen> {
           myScore: 0,
           opponentScore: 0,
           priorityPlayerId: null,
-          myQuest1_1Completed: false,
-          myQuest1_2Completed: false,
-          myQuest1_3Completed: false,
-          myQuest2_1Completed: false,
-          myQuest2_2Completed: false,
-          myQuest2_3Completed: false,
-          opponentQuest1_1Completed: false,
-          opponentQuest1_2Completed: false,
-          opponentQuest1_3Completed: false,
-          opponentQuest2_1Completed: false,
-          opponentQuest2_2Completed: false,
-          opponentQuest2_3Completed: false,
+          // REMOVED: myQuest1_1Completed: false, etc.
+          // These boolean flags are now handled internally by the Round constructor
+          // which initializes the List<Quest> myQuestsSuite1, myQuestsSuite2, etc.
         ),
       ),
       result: 'En cours',

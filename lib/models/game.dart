@@ -72,18 +72,8 @@ class Game {
                 myScore: 0,
                 opponentScore: 0,
                 priorityPlayerId: null,
-                myQuest1_1Completed: false,
-                myQuest1_2Completed: false,
-                myQuest1_3Completed: false,
-                myQuest2_1Completed: false,
-                myQuest2_2Completed: false,
-                myQuest2_3Completed: false,
-                opponentQuest1_1Completed: false,
-                opponentQuest1_2Completed: false,
-                opponentQuest1_3Completed: false,
-                opponentQuest2_1Completed: false,
-                opponentQuest2_2Completed: false,
-                opponentQuest2_3Completed: false,
+                // Les propriétés de quêtes individuelles ne sont plus nécessaires ici,
+                // le constructeur de Round gère leur initialisation par défaut.
               ),
             ),
         gameState = gameState ?? GameState.setup;
@@ -132,7 +122,7 @@ class Game {
       attackerPlayerId: attackerPlayerId ?? this.attackerPlayerId,
       priorityPlayerIdRound1:
           priorityPlayerIdRound1 ?? this.priorityPlayerIdRound1,
-      rounds: rounds ?? this.rounds,
+      rounds: rounds ?? this.rounds.map((r) => r.copyWith()).toList(), // Deep copy des rounds
       result: result ?? this.result,
       scoreOutOf20: scoreOutOf20 ?? this.scoreOutOf20,
       notes: notes ?? this.notes,
@@ -188,9 +178,9 @@ class Game {
       attackerPlayerId: map['attackerPlayerId'] as String?,
       priorityPlayerIdRound1: map['priorityPlayerIdRound1'] as String?,
       rounds: List<Round>.from(
-        (map['rounds'] as List<dynamic>?)?.map<Round>(
-              (x) => Round.fromMap(x as Map<String, dynamic>),
-            ).toList() ??
+        (map['rounds'] as List<dynamic>?)
+                ?.map<Round>((x) => Round.fromMap(x as Map<String, dynamic>))
+                .toList() ??
             List.generate(
               5,
               (index) => Round(
@@ -198,18 +188,8 @@ class Game {
                 myScore: 0,
                 opponentScore: 0,
                 priorityPlayerId: null,
-                myQuest1_1Completed: false,
-                myQuest1_2Completed: false,
-                myQuest1_3Completed: false,
-                myQuest2_1Completed: false,
-                myQuest2_2Completed: false,
-                myQuest2_3Completed: false,
-                opponentQuest1_1Completed: false,
-                opponentQuest1_2Completed: false,
-                opponentQuest1_3Completed: false,
-                opponentQuest2_1Completed: false,
-                opponentQuest2_2Completed: false,
-                opponentQuest2_3Completed: false,
+                // Les propriétés de quêtes individuelles ne sont plus nécessaires ici,
+                // le constructeur de Round gère leur initialisation par défaut.
               ),
             ),
       ),
@@ -222,8 +202,8 @@ class Game {
               orElse: () => GameState.setup,
             )
           : GameState.setup,
-      underdogPlayerIdForGame: map['underdogPlayerIdForGame']
-          as String?, // NEW: Read underdogPlayerIdForGame from map
+      underdogPlayerIdForGame:
+          map['underdogPlayerIdForGame'] as String?, // NEW: Read underdogPlayerIdForGame from map
     );
   }
 

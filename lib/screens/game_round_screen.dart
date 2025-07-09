@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:octominia/models/game.dart';
 import 'package:octominia/models/round.dart';
+import 'package:octominia/models/quest.dart';
+
 
 class GameRoundScreen extends StatefulWidget {
   final int roundNumber;
@@ -333,86 +335,79 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     widget.onUpdateRound(_currentRound);
   }
 
-  void _updateQuest(String questKey, bool value, bool isMyPlayer) {
-    // Si l'utilisateur tente de décocher une quête
-    if (!value) {
-      bool canUncheck = true; // Par défaut, on peut décocher
-      if (isMyPlayer) {
-        // Logique pour les quêtes du joueur : empêcher de décocher si une quête suivante est cochée DANS CE ROUND
-        if (questKey == 'myQuest1_2Completed' && _currentRound.myQuest1_3Completed) canUncheck = false;
-        if (questKey == 'myQuest1_1Completed' && (_currentRound.myQuest1_2Completed || _currentRound.myQuest1_3Completed)) canUncheck = false;
-        if (questKey == 'myQuest2_2Completed' && _currentRound.myQuest2_3Completed) canUncheck = false;
-        if (questKey == 'myQuest2_1Completed' && (_currentRound.myQuest2_2Completed || _currentRound.myQuest2_3Completed)) canUncheck = false;
-      } else {
-        // Logique pour les quêtes de l'adversaire
-        if (questKey == 'opponentQuest1_2Completed' && _currentRound.opponentQuest1_3Completed) canUncheck = false;
-        if (questKey == 'opponentQuest1_1Completed' && (_currentRound.opponentQuest1_2Completed || _currentRound.opponentQuest1_3Completed)) canUncheck = false;
-        if (questKey == 'opponentQuest2_2Completed' && _currentRound.opponentQuest2_3Completed) canUncheck = false;
-        if (questKey == 'opponentQuest2_1Completed' && (_currentRound.opponentQuest2_2Completed || _currentRound.opponentQuest2_3Completed)) canUncheck = false;
-      }
+  // Helper method to get the correct quest list based on player and suite
+  List<Quest> _getQuestSuite(bool isMyPlayer, int suiteIndex) {
+    if (isMyPlayer) {
+      return (suiteIndex == 1) ? _currentRound.myQuestsSuite1 : _currentRound.myQuestsSuite2;
+    } else {
+      return (suiteIndex == 1) ? _currentRound.opponentQuestsSuite1 : _currentRound.opponentQuestsSuite2;
+    }
+  }
 
-      if (!canUncheck) {
-        // Afficher un message à l'utilisateur
+  // Helper method to get the index of a quest within its suite based on its key
+  int _getQuestIndexFromKey(String questKey) {
+    if (questKey.endsWith('1_1Completed') || questKey.endsWith('2_1Completed')) {
+      return 0;
+    } else if (questKey.endsWith('1_2Completed') || questKey.endsWith('2_2Completed')) {
+      return 1;
+    } else if (questKey.endsWith('1_3Completed') || questKey.endsWith('2_3Completed')) {
+      return 2;
+    }
+    return -1; // Should not happen
+  }
+
+  // Helper method to get the suite index from a quest key
+  int _getSuiteIndexFromKey(String questKey) {
+    if (questKey.contains('1_')) {
+      return 1;
+    } else if (questKey.contains('2_')) {
+      return 2;
+    }
+    return -1; // Should not happen
+  }
+
+
+  void _updateQuest(String questKey, bool value, bool isMyPlayer) {
+    final int suiteIndex = _getSuiteIndexFromKey(questKey);
+    final int questIndex = _getQuestIndexFromKey(questKey);
+
+    if (suiteIndex == -1 || questIndex == -1) {
+      return; // Invalid quest key
+    }
+
+    bool questUpdated = false;
+
+    if (value) { // Si on veut cocher la quête
+      questUpdated = _currentRound.completeQuest(isMyPlayer, suiteIndex, questIndex);
+      if (!questUpdated) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Veuillez compléter la quête précédente d\'abord.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } else { // Si on veut décocher la quête
+      questUpdated = _currentRound.uncompleteQuest(isMyPlayer, suiteIndex, questIndex);
+      if (!questUpdated) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Veuillez d\'abord désactiver les quêtes suivantes.'),
             duration: Duration(seconds: 2),
           ),
         );
-        return; // Empêche la mise à jour si le décheck est invalide
       }
     }
 
-    Round updatedRound = _currentRound;
-    if (isMyPlayer) {
-      switch (questKey) {
-        case 'myQuest1_1Completed':
-          updatedRound = updatedRound.copyWith(myQuest1_1Completed: value);
-          break;
-        case 'myQuest1_2Completed':
-          updatedRound = updatedRound.copyWith(myQuest1_2Completed: value);
-          break;
-        case 'myQuest1_3Completed':
-          updatedRound = updatedRound.copyWith(myQuest1_3Completed: value);
-          break;
-        case 'myQuest2_1Completed':
-          updatedRound = updatedRound.copyWith(myQuest2_1Completed: value);
-          break;
-        case 'myQuest2_2Completed':
-          updatedRound = updatedRound.copyWith(myQuest2_2Completed: value);
-          break;
-        case 'myQuest2_3Completed':
-          updatedRound = updatedRound.copyWith(myQuest2_3Completed: value);
-          break;
-      }
-    } else {
-      switch (questKey) {
-        case 'opponentQuest1_1Completed':
-          updatedRound = updatedRound.copyWith(opponentQuest1_1Completed: value);
-          break;
-        case 'opponentQuest1_2Completed':
-          updatedRound = updatedRound.copyWith(opponentQuest1_2Completed: value);
-          break;
-        case 'opponentQuest1_3Completed':
-          updatedRound = updatedRound.copyWith(opponentQuest1_3Completed: value);
-          break;
-        case 'opponentQuest2_1Completed':
-          updatedRound = updatedRound.copyWith(opponentQuest2_1Completed: value);
-          break;
-        case 'opponentQuest2_2Completed':
-          updatedRound = updatedRound.copyWith(opponentQuest2_2Completed: value);
-          break;
-        case 'opponentQuest2_3Completed':
-          updatedRound = updatedRound.copyWith(opponentQuest2_3Completed: value);
-          break;
-      }
+    if (questUpdated) {
+      _updateRoundLocally(_currentRound);
     }
-    _updateRoundLocally(updatedRound);
   }
+
 
   // --- Widgets pour l'interface utilisateur ---
 
-  // Nouvelle version de _buildPlayerSelectionButton avec plus d'options de customisation
+  // MODIFIÉ : Nouvelle version de _buildPlayerSelectionButton pour un meilleur style
   Widget _buildPlayerSelectionButton({
     required String playerKey,
     required String playerName,
@@ -421,7 +416,6 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     double fontSize = 14,
     EdgeInsetsGeometry padding = const EdgeInsets.symmetric(vertical: 8),
   }) {
-    // Utilise les trois premières lettres en majuscules pour le trigramme
     String trigram = playerName.length >= 3 ? playerName.substring(0, 3).toUpperCase() : playerName.toUpperCase();
 
     return Expanded(
@@ -431,12 +425,22 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
           onPressed: () => onSelect(playerKey),
           style: ElevatedButton.styleFrom(
             backgroundColor: isSelected
-                ? Theme.of(context).primaryColor
-                : Theme.of(context).disabledColor,
-            foregroundColor: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                ? Theme.of(context).primaryColor // Couleur de fond si sélectionné
+                : Theme.of(context).cardColor, // Couleur de fond par défaut (similaire à la couleur de la carte)
+            foregroundColor: isSelected
+                ? Colors.white // Couleur du texte si sélectionné
+                : Theme.of(context).colorScheme.onSurface, // Couleur du texte par défaut
+            side: BorderSide(
+              color: isSelected
+                  ? Theme.of(context).primaryColor // Bordure de la couleur primaire si sélectionné
+                  : Colors.grey.shade400, // Bordure grise pour non sélectionné
+              width: 1,
+            ),
             padding: padding,
-            textStyle: TextStyle(fontSize: fontSize),
+            textStyle: TextStyle(fontSize: fontSize, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
             minimumSize: const Size(0, 36), // Hauteur minimale pour la cohérence
+            elevation: isSelected ? 4 : 0, // Élévation pour le bouton sélectionné
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)), // Bords légèrement arrondis
           ),
           child: Text(trigram),
         ),
@@ -593,57 +597,28 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     );
   }
 
-  // Nouvelle fonction pour vérifier si une quête a été complétée dans un des tours précédents
-  bool _wasQuestCompletedInAnyPreviousRound(String questKey, bool isMyPlayer) {
-    return widget.game.rounds.any((round) {
-      if (round.roundNumber < widget.roundNumber) { // Checks only previous rounds
-        if (isMyPlayer) {
-          switch (questKey) {
-            case 'myQuest1_1Completed': return round.myQuest1_1Completed;
-            case 'myQuest1_2Completed': return round.myQuest1_2Completed;
-            case 'myQuest1_3Completed': return round.myQuest1_3Completed;
-            case 'myQuest2_1Completed': return round.myQuest2_1Completed;
-            case 'myQuest2_2Completed': return round.myQuest2_2Completed;
-            case 'myQuest2_3Completed': return round.myQuest2_3Completed;
-          }
-        } else {
-          switch (questKey) {
-            case 'opponentQuest1_1Completed': return round.opponentQuest1_1Completed;
-            case 'opponentQuest1_2Completed': return round.opponentQuest1_2Completed;
-            case 'opponentQuest1_3Completed': return round.opponentQuest1_3Completed;
-            case 'opponentQuest2_1Completed': return round.opponentQuest2_1Completed;
-            case 'opponentQuest2_2Completed': return round.opponentQuest2_2Completed;
-            case 'opponentQuest2_3Completed': return round.opponentQuest2_3Completed;
-          }
+  // Helper pour vérifier si une quête est complétée dans le tour actuel ou les précédents
+  bool _isQuestActuallyCompleted(bool isMyPlayer, int suiteIndex, int questIndex) {
+    final List<Quest> targetSuite = _getQuestSuite(isMyPlayer, suiteIndex);
+    if (questIndex < 0 || questIndex >= targetSuite.length) return false;
+
+    // Check current round status
+    if (targetSuite[questIndex].status == QuestStatus.completed) {
+      return true;
+    }
+
+    // Check previous rounds status
+    for (var round in widget.game.rounds) {
+      if (round.roundNumber < widget.roundNumber) {
+        final List<Quest> previousRoundSuite = isMyPlayer
+            ? ((suiteIndex == 1) ? round.myQuestsSuite1 : round.myQuestsSuite2)
+            : ((suiteIndex == 1) ? round.opponentQuestsSuite1 : round.opponentQuestsSuite2);
+        if (questIndex < previousRoundSuite.length && previousRoundSuite[questIndex].status == QuestStatus.completed) {
+          return true;
         }
       }
-      return false;
-    });
-  }
-
-  // Helper pour vérifier si une quête est complétée dans le tour actuel ou les précédents
-  bool _isQuestActuallyCompleted(String questKey, bool isMyPlayer) {
-    bool completedInCurrent = false;
-    if (isMyPlayer) {
-      switch (questKey) {
-        case 'myQuest1_1Completed': completedInCurrent = _currentRound.myQuest1_1Completed; break;
-        case 'myQuest1_2Completed': completedInCurrent = _currentRound.myQuest1_2Completed; break;;
-        case 'myQuest1_3Completed': completedInCurrent = _currentRound.myQuest1_3Completed; break;
-        case 'myQuest2_1Completed': completedInCurrent = _currentRound.myQuest2_1Completed; break;
-        case 'myQuest2_2Completed': completedInCurrent = _currentRound.myQuest2_2Completed; break;
-        case 'myQuest2_3Completed': completedInCurrent = _currentRound.myQuest2_3Completed; break;
-      }
-    } else {
-      switch (questKey) {
-        case 'opponentQuest1_1Completed': completedInCurrent = _currentRound.opponentQuest1_1Completed; break;
-        case 'opponentQuest1_2Completed': completedInCurrent = _currentRound.opponentQuest1_2Completed; break;
-        case 'opponentQuest1_3Completed': completedInCurrent = _currentRound.opponentQuest1_3Completed; break;
-        case 'opponentQuest2_1Completed': completedInCurrent = _currentRound.opponentQuest2_1Completed; break;
-        case 'opponentQuest2_2Completed': completedInCurrent = _currentRound.opponentQuest2_2Completed; break;
-        case 'opponentQuest2_3Completed': completedInCurrent = _currentRound.opponentQuest2_3Completed; break;
-      }
     }
-    return completedInCurrent || _wasQuestCompletedInAnyPreviousRound(questKey, isMyPlayer);
+    return false;
   }
 
   Widget _buildQuestSection(BuildContext context, bool isMyPlayer) {
@@ -651,87 +626,38 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     bool disableQuestsGlobally = (isMyPlayer && _currentRound.myPlayerDidNonFreeDoubleTurn) ||
         (!isMyPlayer && _currentRound.opponentPlayerDidNonFreeDoubleTurn);
 
-    // --- Suite 1 ---
-    String quest1_1Key = isMyPlayer ? 'myQuest1_1Completed' : 'opponentQuest1_1Completed';
-    bool quest1_1CompletedPreviously = _wasQuestCompletedInAnyPreviousRound(quest1_1Key, isMyPlayer);
-    bool quest1_1CompletedInCurrentRound = isMyPlayer ? _currentRound.myQuest1_1Completed : _currentRound.opponentQuest1_1Completed;
-    
-    String quest1_2Key = isMyPlayer ? 'myQuest1_2Completed' : 'opponentQuest1_2Completed';
-    bool quest1_2CompletedPreviously = _wasQuestCompletedInAnyPreviousRound(quest1_2Key, isMyPlayer);
-    bool quest1_2CompletedInCurrentRound = isMyPlayer ? _currentRound.myQuest1_2Completed : _currentRound.opponentQuest1_2Completed;
+    // Fonction pour déterminer si une quête est activée
+    bool _isQuestEnabled(int suiteIndex, int questIndex) {
+      if (disableQuestsGlobally) return false;
 
-    String quest1_3Key = isMyPlayer ? 'myQuest1_3Completed' : 'opponentQuest1_3Completed';
-    bool quest1_3CompletedPreviously = _wasQuestCompletedInAnyPreviousRound(quest1_3Key, isMyPlayer);
-    bool quest1_3CompletedInCurrentRound = isMyPlayer ? _currentRound.myQuest1_3Completed : _currentRound.opponentQuest1_3Completed;
+      final List<Quest> targetSuite = _getQuestSuite(isMyPlayer, suiteIndex);
+      if (questIndex < 0 || questIndex >= targetSuite.length) return false;
 
-    // Condition: Y a-t-il une autre quête (différente de celle-ci) dans la suite 1 complétée dans le tour actuel?
-    bool anyOtherQuest1CompletedInCurrentRound(String currentQuestKey) {
-        if (isMyPlayer) {
-            return (quest1_1CompletedInCurrentRound && currentQuestKey != quest1_1Key) ||
-                   (quest1_2CompletedInCurrentRound && currentQuestKey != quest1_2Key) ||
-                   (quest1_3CompletedInCurrentRound && currentQuestKey != quest1_3Key);
-        } else {
-            return (quest1_1CompletedInCurrentRound && currentQuestKey != quest1_1Key) ||
-                   (quest1_2CompletedInCurrentRound && currentQuestKey != quest1_2Key) ||
-                   (quest1_3CompletedInCurrentRound && currentQuestKey != quest1_3Key);
-        }
+      final Quest currentQuest = targetSuite[questIndex];
+
+      // Une quête est activée si elle est "unlocked"
+      bool isUnlocked = currentQuest.status == QuestStatus.unlocked;
+      // Ou si elle est "completed" (pour permettre de la décocher si nécessaire)
+      bool isCompleted = currentQuest.status == QuestStatus.completed;
+
+      // Si c'est la première quête de la suite (index 0), elle est débloquée par défaut au début du round
+      // et elle est toujours activable si elle n'est pas déjà complétée dans les tours précédents.
+      if (questIndex == 0) {
+        return (isUnlocked || isCompleted);
+      } else {
+        // Pour les quêtes suivantes, elles dépendent de la complétion de la quête précédente
+        final bool previousQuestCompleted = _isQuestActuallyCompleted(isMyPlayer, suiteIndex, questIndex - 1);
+        return (previousQuestCompleted && (isUnlocked || isCompleted));
+      }
     }
 
-    // Enabled state for Suite 1 Quests
-    bool isQuest1_1Enabled = !disableQuestsGlobally &&
-                             !quest1_1CompletedPreviously &&
-                             (quest1_1CompletedInCurrentRound || !anyOtherQuest1CompletedInCurrentRound(quest1_1Key));
-    
-    bool isQuest1_2Enabled = !disableQuestsGlobally &&
-                             !quest1_2CompletedPreviously &&
-                             _isQuestActuallyCompleted(quest1_1Key, isMyPlayer) && // Sequential dependency
-                             (quest1_2CompletedInCurrentRound || !anyOtherQuest1CompletedInCurrentRound(quest1_2Key));
+    List<Quest> myQuestsSuite1 = _currentRound.myQuestsSuite1;
+    List<Quest> myQuestsSuite2 = _currentRound.myQuestsSuite2;
+    List<Quest> opponentQuestsSuite1 = _currentRound.opponentQuestsSuite1;
+    List<Quest> opponentQuestsSuite2 = _currentRound.opponentQuestsSuite2;
 
-    bool isQuest1_3Enabled = !disableQuestsGlobally &&
-                             !quest1_3CompletedPreviously &&
-                             _isQuestActuallyCompleted(quest1_2Key, isMyPlayer) && // Sequential dependency
-                             (quest1_3CompletedInCurrentRound || !anyOtherQuest1CompletedInCurrentRound(quest1_3Key));
-
-    // --- Suite 2 ---
-    String quest2_1Key = isMyPlayer ? 'myQuest2_1Completed' : 'opponentQuest2_1Completed';
-    bool quest2_1CompletedPreviously = _wasQuestCompletedInAnyPreviousRound(quest2_1Key, isMyPlayer);
-    bool quest2_1CompletedInCurrentRound = isMyPlayer ? _currentRound.myQuest2_1Completed : _currentRound.opponentQuest2_1Completed;
-    
-    String quest2_2Key = isMyPlayer ? 'myQuest2_2Completed' : 'opponentQuest2_2Completed';
-    bool quest2_2CompletedPreviously = _wasQuestCompletedInAnyPreviousRound(quest2_2Key, isMyPlayer);
-    bool quest2_2CompletedInCurrentRound = isMyPlayer ? _currentRound.myQuest2_2Completed : _currentRound.opponentQuest2_2Completed;
-
-    String quest2_3Key = isMyPlayer ? 'myQuest2_3Completed' : 'opponentQuest2_3Completed';
-    bool quest2_3CompletedPreviously = _wasQuestCompletedInAnyPreviousRound(quest2_3Key, isMyPlayer);
-    bool quest2_3CompletedInCurrentRound = isMyPlayer ? _currentRound.myQuest2_3Completed : _currentRound.opponentQuest2_3Completed;
-
-    // Condition: Y a-t-il une autre quête (différente de celle-ci) dans la suite 2 complétée dans le tour actuel?
-    bool anyOtherQuest2CompletedInCurrentRound(String currentQuestKey) {
-        if (isMyPlayer) {
-            return (quest2_1CompletedInCurrentRound && currentQuestKey != quest2_1Key) ||
-                   (quest2_2CompletedInCurrentRound && currentQuestKey != quest2_2Key) ||
-                   (quest2_3CompletedInCurrentRound && currentQuestKey != quest2_3Key);
-        } else {
-            return (quest2_1CompletedInCurrentRound && currentQuestKey != quest2_1Key) ||
-                   (quest2_2CompletedInCurrentRound && currentQuestKey != quest2_2Key) ||
-                   (quest2_3CompletedInCurrentRound && currentQuestKey != quest2_3Key);
-        }
-    }
-
-    // Enabled state for Suite 2 Quests
-    bool isQuest2_1Enabled = !disableQuestsGlobally &&
-                             !quest2_1CompletedPreviously &&
-                             (quest2_1CompletedInCurrentRound || !anyOtherQuest2CompletedInCurrentRound(quest2_1Key));
-    
-    bool isQuest2_2Enabled = !disableQuestsGlobally &&
-                             !quest2_2CompletedPreviously &&
-                             _isQuestActuallyCompleted(quest2_1Key, isMyPlayer) && // Sequential dependency
-                             (quest2_2CompletedInCurrentRound || !anyOtherQuest2CompletedInCurrentRound(quest2_2Key));
-
-    bool isQuest2_3Enabled = !disableQuestsGlobally &&
-                             !quest2_3CompletedPreviously &&
-                             _isQuestActuallyCompleted(quest2_2Key, isMyPlayer) && // Sequential dependency
-                             (quest2_3CompletedInCurrentRound || !anyOtherQuest2CompletedInCurrentRound(quest2_3Key));
+    List<Quest> currentPlayersQuestsSuite1 = isMyPlayer ? myQuestsSuite1 : opponentQuestsSuite1;
+    List<Quest> currentPlayersQuestsSuite2 = isMyPlayer ? myQuestsSuite2 : opponentQuestsSuite2;
 
 
     return Column(
@@ -755,24 +681,18 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Groupe de Quêtes 1
-                  _buildQuestCheckbox(
-                    '1 - Affray',
-                    isMyPlayer ? _currentRound.myQuest1_1Completed : _currentRound.opponentQuest1_1Completed,
-                        (newValue) => _updateQuest(isMyPlayer ? 'myQuest1_1Completed' : 'opponentQuest1_1Completed', newValue, isMyPlayer),
-                    isEnabled: isQuest1_1Enabled,
-                  ),
-                  _buildQuestCheckbox(
-                    '1 - Strike',
-                    isMyPlayer ? _currentRound.myQuest1_2Completed : _currentRound.opponentQuest1_2Completed,
-                        (newValue) => _updateQuest(isMyPlayer ? 'myQuest1_2Completed' : 'opponentQuest1_2Completed', newValue, isMyPlayer),
-                    isEnabled: isQuest1_2Enabled,
-                  ),
-                  _buildQuestCheckbox(
-                    '1 - Domination',
-                    isMyPlayer ? _currentRound.myQuest1_3Completed : _currentRound.opponentQuest1_3Completed,
-                        (newValue) => _updateQuest(isMyPlayer ? 'myQuest1_3Completed' : 'opponentQuest1_3Completed', newValue, isMyPlayer),
-                    isEnabled: isQuest1_3Enabled,
-                  ),
+                  ...List.generate(currentPlayersQuestsSuite1.length, (index) {
+                    final quest = currentPlayersQuestsSuite1[index];
+                    return _buildQuestCheckbox(
+                      '1 - ${quest.name}',
+                      quest.status == QuestStatus.completed,
+                      (newValue) => _updateQuest(
+                          (isMyPlayer ? 'myQuest' : 'opponentQuest') + '1_' + (index + 1).toString() + 'Completed',
+                          newValue,
+                          isMyPlayer),
+                      isEnabled: _isQuestEnabled(1, index),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -781,24 +701,18 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Groupe de Quêtes 2
-                  _buildQuestCheckbox(
-                    '2 - Affray',
-                    isMyPlayer ? _currentRound.myQuest2_1Completed : _currentRound.opponentQuest2_1Completed,
-                        (newValue) => _updateQuest(isMyPlayer ? 'myQuest2_1Completed' : 'opponentQuest2_1Completed', newValue, isMyPlayer),
-                    isEnabled: isQuest2_1Enabled,
-                  ),
-                  _buildQuestCheckbox(
-                    '2 - Strike',
-                    isMyPlayer ? _currentRound.myQuest2_2Completed : _currentRound.opponentQuest2_2Completed,
-                        (newValue) => _updateQuest(isMyPlayer ? 'myQuest2_2Completed' : 'opponentQuest2_2Completed', newValue, isMyPlayer),
-                    isEnabled: isQuest2_2Enabled,
-                  ),
-                  _buildQuestCheckbox(
-                    '2 - Domination',
-                    isMyPlayer ? _currentRound.myQuest2_3Completed : _currentRound.opponentQuest2_3Completed,
-                        (newValue) => _updateQuest(isMyPlayer ? 'myQuest2_3Completed' : 'opponentQuest2_3Completed', newValue, isMyPlayer),
-                    isEnabled: isQuest2_3Enabled,
-                  ),
+                  ...List.generate(currentPlayersQuestsSuite2.length, (index) {
+                    final quest = currentPlayersQuestsSuite2[index];
+                    return _buildQuestCheckbox(
+                      '2 - ${quest.name}',
+                      quest.status == QuestStatus.completed,
+                      (newValue) => _updateQuest(
+                          (isMyPlayer ? 'myQuest' : 'opponentQuest') + '2_' + (index + 1).toString() + 'Completed',
+                          newValue,
+                          isMyPlayer),
+                      isEnabled: _isQuestEnabled(2, index),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -942,18 +856,18 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
   Widget build(BuildContext context) {
     // Les scores cumulés des rounds précédents sont toujours calculés dynamiquement pour l'affichage
     // et pour déterminer les opportunités de quêtes basées sur l'historique
-    int myScorePreviousRounds = 0;
-    int opponentScorePreviousRounds = 0;
+    int myTotalScorePreviousRounds = 0;
+    int opponentTotalScorePreviousRounds = 0;
 
     for (var round in widget.game.rounds) {
       if (round.roundNumber < widget.roundNumber) {
-        myScorePreviousRounds += round.calculatePlayerTotalScore(true);
-        opponentScorePreviousRounds += round.calculatePlayerTotalScore(false);
+        myTotalScorePreviousRounds += round.calculatePlayerTotalScore(true);
+        opponentTotalScorePreviousRounds += round.calculatePlayerTotalScore(false);
       }
     }
 
-    Widget myPlayerCard = _buildPlayerScoreCard(context, _myPlayerName, true, myScorePreviousRounds, opponentScorePreviousRounds);
-    Widget opponentPlayerCard = _buildPlayerScoreCard(context, _opponentPlayerName, false, myScorePreviousRounds, opponentScorePreviousRounds);
+    Widget myPlayerCard = _buildPlayerScoreCard(context, _myPlayerName, true, myTotalScorePreviousRounds, opponentTotalScorePreviousRounds);
+    Widget opponentPlayerCard = _buildPlayerScoreCard(context, _opponentPlayerName, false, myTotalScorePreviousRounds, opponentTotalScorePreviousRounds);
 
     List<Widget> orderedPlayerCards = [];
     if (_currentRound.priorityPlayerId == 'me') {
