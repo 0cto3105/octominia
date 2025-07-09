@@ -1,8 +1,8 @@
 // lib/models/quest.dart
 
 enum QuestStatus {
-  locked,      // La quête n'est pas encore débloquée
-  unlocked,    // La quête est débloquée et peut être complétée
+  locked,        // La quête n'est pas encore débloquée
+  unlocked,      // La quête est débloquée et peut être complétée
   completed,   // La quête a été complétée
 }
 
@@ -30,8 +30,8 @@ class Quest {
     );
   }
 
-  // Conversion en Map pour la sérialisation
-  Map<String, dynamic> toMap() {
+  // Conversion en Map pour la sérialisation (Maintenant toJson())
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
@@ -39,8 +39,8 @@ class Quest {
     };
   }
 
-  // Création à partir d'une Map
-  factory Quest.fromMap(Map<String, dynamic> map) {
+  // Création à partir d'une Map (Maintenant fromJson())
+  factory Quest.fromJson(Map<String, dynamic> map) {
     return Quest(
       id: map['id'] as int,
       name: map['name'] as String,
