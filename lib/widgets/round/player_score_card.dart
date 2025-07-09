@@ -36,7 +36,12 @@ class PlayerScoreCard extends StatelessWidget {
     if (roundNumber > 1) {
       final previousRound = game.rounds.firstWhere(
             (round) => round.roundNumber == roundNumber - 1,
-        orElse: () => Round(roundNumber: 0, myScore: 0, opponentScore: 0),
+        orElse: () => Round( // Fallback pour éviter null si le round précédent n'existe pas (devrait pas arriver)
+            roundNumber: 0, myScore: 0, opponentScore: 0,
+            myQuestsSuite1: [], myQuestsSuite2: [], opponentQuestsSuite1: [], opponentQuestsSuite2: [],
+            myQuestSuite1CompletedThisRound: false, myQuestSuite2CompletedThisRound: false,
+            opponentQuestSuite1CompletedThisRound: false, opponentQuestSuite2CompletedThisRound: false,
+        ),
       );
       previousRoundPriorityPlayerId = previousRound.priorityPlayerId;
     }
@@ -50,6 +55,7 @@ class PlayerScoreCard extends StatelessWidget {
     bool isDoubleTurnTriggeredByCurrentChoice = false;
     if (currentRound.initiativePlayerId != null &&
         currentRound.priorityPlayerId != null &&
+        playerWhoWasSecondLastRound != null &&
         currentRound.initiativePlayerId == playerWhoWasSecondLastRound &&
         currentRound.priorityPlayerId == playerWhoWasSecondLastRound &&
         ((isMyPlayer && currentRound.priorityPlayerId == 'me') || (!isMyPlayer && currentRound.priorityPlayerId == 'opponent'))
@@ -68,6 +74,10 @@ class PlayerScoreCard extends StatelessWidget {
 
     // Déterminer si la pastille "Going for a Double Turn" doit être affichée (déclenché mais pas gratuit)
     bool showGoingForDoubleTurnBadge = isDoubleTurnTriggeredByCurrentChoice && !isDoubleFreeTurnOpportunity;
+
+    // NOUVEAU : Déterminer si le joueur a fait un double tour non gratuit ce round
+    bool didNonFreeDoubleTurnThisRound = (isMyPlayer && currentRound.myPlayerDidNonFreeDoubleTurn) ||
+                                         (!isMyPlayer && currentRound.opponentPlayerDidNonFreeDoubleTurn);
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 10.0),
@@ -148,14 +158,28 @@ class PlayerScoreCard extends StatelessWidget {
               onChanged: (newScore) => onUpdatePrimaryScore(newScore, isMyPlayer),
             ),
             const SizedBox(height: 20),
-            QuestSection(
-              isMyPlayer: isMyPlayer,
-              currentRound: currentRound,
-              onUpdateQuest: onUpdateQuest,
-              isQuestActuallyCompleted: isQuestActuallyCompleted,
-              game: game,
-              roundNumber: roundNumber,
-            ),
+            // NOUVEAU : Condition pour afficher la QuestSection
+            if (!didNonFreeDoubleTurnThisRound) // Si le joueur n'a PAS fait de double tour non gratuit
+              QuestSection(
+                isMyPlayer: isMyPlayer,
+                currentRound: currentRound,
+                onUpdateQuest: onUpdateQuest,
+                isQuestActuallyCompleted: isQuestActuallyCompleted,
+                game: game,
+                roundNumber: roundNumber,
+              )
+            else // Si le joueur a fait un double tour non gratuit, afficher un message
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  'Pas de quête ce tour (Double Tour non gratuit)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                    color: Theme.of(context).colorScheme.error, // Couleur d'erreur ou de mise en garde
+                  ),
+                ),
+              ),
           ],
         ),
       ),

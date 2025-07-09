@@ -1,15 +1,15 @@
-// lib/screens/add_game_screen.dart
+// lib/screens/game_center_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:octominia/models/game.dart';
-import 'package:octominia/models/round.dart';
+import 'package:octominia/models/round.dart'; // Tu auras toujours besoin de cet import
 import 'package:octominia/services/game_json_storage.dart';
 import 'package:octominia/screens/games/game_setup_screen.dart';
 import 'package:octominia/screens/games/game_roll_offs_screen.dart';
 import 'package:octominia/screens/games/game_round_screen.dart';
 import 'package:octominia/screens/games/game_summary_screen.dart';
-import 'package:octominia/screens/games/game_template.dart'; // Importez le nouveau template
+import 'package:octominia/screens/games/game_template.dart';
 
 class GamerCenterScreen extends StatefulWidget {
   final Game? initialGame;
@@ -52,15 +52,8 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
       opponentDrops: 1,
       myAuxiliaryUnits: false,
       opponentAuxiliaryUnits: false,
-      rounds: List.generate(
-        5,
-        (index) => Round(
-          roundNumber: index + 1,
-          myScore: 0,
-          opponentScore: 0,
-          priorityPlayerId: null,
-        ),
-      ),
+      // SUPPRIME LA SECTION 'rounds: List.generate(...)' CI-DESSOUS
+      // Laisse le constructeur de Game gérer l'initialisation des rounds et quêtes
       attackerPlayerId: 'me',
       priorityPlayerIdRound1: 'me',
       scoreOutOf20: 0,
@@ -228,8 +221,9 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
     } else if (_currentPageIndex == 7) {
       // On the summary screen, the "Finaliser la Partie" button (which is _nextPage)
       setState(() {
+        // La méthode calculateScoreOutOf20 est statique et prend un objet Game
         _newGame = _newGame.copyWith(
-          scoreOutOf20: Game.calculateScoreOutOf20(_newGame.myScore, _newGame.opponentScore),
+          scoreOutOf20: Game.calculateScoreOutOf20(_newGame), // Utilise l'objet _newGame
           gameState: GameState.completed, // Mark as completed
         );
       });

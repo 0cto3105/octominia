@@ -3,11 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:octominia/models/game.dart';
 import 'package:octominia/models/round.dart';
-import 'package:octominia/models/quest.dart'; // Keep this as Quest is used in logic
-import 'package:octominia/widgets/round/player_score_card.dart'; // New import
-import 'package:octominia/widgets/round/primary_score_slider.dart'; // New import
-import 'package:octominia/widgets/round/quest_section.dart'; // New import
-import 'package:octominia/widgets/round/quest_checkbox.dart'; // New import
+import 'package:octominia/models/quest.dart';
+import 'package:octominia/widgets/round/player_score_card.dart';
+import 'package:octominia/widgets/round/primary_score_slider.dart';
+import 'package:octominia/widgets/round/quest_section.dart';
+import 'package:octominia/widgets/round/quest_checkbox.dart';
 
 
 class GameRoundScreen extends StatefulWidget {
@@ -37,66 +37,45 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     _myPlayerName = widget.game.myPlayerName;
     _opponentPlayerName = widget.game.opponentPlayerName;
 
+    // Retrieve the current round.
+    // Ensure it exists and has quests properly initialized.
     _currentRound = widget.game.rounds.firstWhere(
       (round) => round.roundNumber == widget.roundNumber,
+      // If for some reason a round doesn't exist, create a new one with initial quests.
+      // This fallback is crucial for robustness if 'game.rounds' was not perfectly populated.
+      orElse: () => Round(
+        roundNumber: widget.roundNumber,
+        myScore: 0,
+        opponentScore: 0,
+        myQuestsSuite1: Round.createInitialQuests(isMyPlayer: true, suiteNumber: 1),
+        myQuestsSuite2: Round.createInitialQuests(isMyPlayer: true, suiteNumber: 2),
+        opponentQuestsSuite1: Round.createInitialQuests(isMyPlayer: false, suiteNumber: 1),
+        opponentQuestsSuite2: Round.createInitialQuests(isMyPlayer: false, suiteNumber: 2),
+        myQuestSuite1CompletedThisRound: false,
+        myQuestSuite2CompletedThisRound: false,
+        opponentQuestSuite1CompletedThisRound: false,
+        opponentQuestSuite2CompletedThisRound: false,
+      ),
     );
 
-    // DÉFINIR 'me' COMME PRIORITÉ PAR DÉFAUT SI NULL
+    // DÉFINIR 'me' COMME PRIORITÉ PAR DÉFAUT SI NULL (et mettre à jour localement)
     if (_currentRound.priorityPlayerId == null) {
       _currentRound = _currentRound.copyWith(priorityPlayerId: 'me');
     }
 
-    // DÉFINIR 'me' COMME JET D'INITIATIVE PAR DÉFAUT SI NULL
+    // DÉFINIR 'me' COMME JET D'INITIATIVE PAR DÉFAUT SI NULL (et mettre à jour localement)
     if (_currentRound.initiativePlayerId == null) {
       _currentRound = _currentRound.copyWith(initiativePlayerId: 'me');
     }
 
-    // Calculer les scores cumulés des rounds précédents pour le "Double Free Turn" et l'underdog initial
-    int myTotalScorePreviousRounds = 0;
-    int opponentTotalScorePreviousRounds = 0;
-    String? actualUnderdogPlayerIdAcrossAllPreviousRounds; // Stocke l'underdog si défini par un double tour non gratuit précédent
+    // Always recalculate flags in initState to ensure consistency upon screen load
+    // This will correctly update myPlayerHadDoubleFreeTurn, opponentPlayerHadDoubleFreeTurn,
+    // and underdogPlayerIdAtEndOfRound for the *current* round based on *previous* rounds' states.
+    _recalculateUnderdogAndDoubleTurnFlags();
 
-    for (var round in widget.game.rounds) {
-      if (round.roundNumber < widget.roundNumber) {
-        myTotalScorePreviousRounds += round.calculatePlayerTotalScore(true);
-        opponentTotalScorePreviousRounds += round.calculatePlayerTotalScore(false);
-        // Si un underdog a été désigné par un double tour non gratuit dans un round précédent, il persiste.
-        if (round.underdogPlayerIdAtEndOfRound != null) {
-          actualUnderdogPlayerIdAcrossAllPreviousRounds = round.underdogPlayerIdAtEndOfRound;
-        }
-      }
-    }
-
-    int scoreDifference = (myTotalScorePreviousRounds - opponentTotalScorePreviousRounds).abs();
-
-    bool myPlayerMightHaveDoubleFreeTurnOpportunity = (myTotalScorePreviousRounds < opponentTotalScorePreviousRounds) && (scoreDifference >= 11);
-    bool opponentPlayerMightHaveDoubleFreeTurnOpportunity = (opponentTotalScorePreviousRounds < myTotalScorePreviousRounds) && (scoreDifference >= 11);
-
-    // Initialiser _currentRound avec les informations de double tour gratuit si elles ne sont pas déjà définies
-    if (_currentRound.myPlayerHadDoubleFreeTurn == false && _currentRound.opponentPlayerHadDoubleFreeTurn == false) {
-      _currentRound = _currentRound.copyWith(
-        myPlayerHadDoubleFreeTurn: myPlayerMightHaveDoubleFreeTurnOpportunity,
-        opponentPlayerHadDoubleFreeTurn: opponentPlayerMightHaveDoubleFreeTurnOpportunity,
-      );
-    }
-
-    // Déterminer l'underdog initial du round
-    String? calculatedUnderdogForThisRound;
-    if (actualUnderdogPlayerIdAcrossAllPreviousRounds != null) {
-      // Si un underdog a déjà été désigné par un double tour non gratuit dans un round précédent, il persiste.
-      calculatedUnderdogForThisRound = actualUnderdogPlayerIdAcrossAllPreviousRounds;
-    } else {
-      // Sinon, on détermine l'underdog pour ce round basé sur la différence de score des rounds précédents
-      if (myTotalScorePreviousRounds < opponentTotalScorePreviousRounds && scoreDifference >= 11) {
-        calculatedUnderdogForThisRound = 'me';
-      } else if (opponentTotalScorePreviousRounds < myTotalScorePreviousRounds && scoreDifference >= 11) {
-        calculatedUnderdogForThisRound = 'opponent';
-      }
-    }
-
-    _currentRound = _currentRound.copyWith(
-      underdogPlayerIdAtEndOfRound: calculatedUnderdogForThisRound,
-    );
+    // Now, _currentRound is ready. If any copyWith happened above, it's already updated.
+    // No need to call _updateRoundLocally here unless you want to persist these initial defaults immediately.
+    // Generally, initial defaults are part of the 'new game' creation logic or fromJson.
   }
 
   void _updateRoundLocally(Round updatedRound) {
@@ -112,7 +91,12 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     if (widget.roundNumber > 1) {
       final previousRound = widget.game.rounds.firstWhere(
             (round) => round.roundNumber == widget.roundNumber - 1,
-        orElse: () => Round(roundNumber: 0, myScore: 0, opponentScore: 0), // Fallback pour éviter null
+        orElse: () => Round( // Fallback if previous round not found, shouldn't happen
+            roundNumber: 0, myScore: 0, opponentScore: 0,
+            myQuestsSuite1: [], myQuestsSuite2: [], opponentQuestsSuite1: [], opponentQuestsSuite2: [],
+            myQuestSuite1CompletedThisRound: false, myQuestSuite2CompletedThisRound: false,
+            opponentQuestSuite1CompletedThisRound: false, opponentQuestSuite2CompletedThisRound: false,
+        ),
       );
       previousRoundPriorityPlayerId = previousRound.priorityPlayerId;
     }
@@ -126,139 +110,56 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
       }
     }
 
-    bool isDoubleTurnTriggered = false;
-    if (_currentRound.initiativePlayerId != null &&
-        playerKey != null && // new priority chosen
-        _currentRound.initiativePlayerId == playerWhoWasSecondLastRound &&
-        playerKey == playerWhoWasSecondLastRound) {
-      isDoubleTurnTriggered = true;
-    }
-
-    // Récupérer l'opportunité de double tour gratuit depuis l'état persistant du round
-    bool isCurrentPlayerDoubleFreeTurn = (playerKey == 'me' && _currentRound.myPlayerHadDoubleFreeTurn) ||
-        (playerKey == 'opponent' && _currentRound.opponentPlayerHadDoubleFreeTurn);
-
-    Round updatedRound = _currentRound;
-
-    String? newUnderdogPlayerIdAtEndOfRound; // Va être recalculé dynamiquement
-    bool newMyPlayerDidNonFreeDoubleTurn = false;
-    bool newOpponentPlayerDidNonFreeDoubleTurn = false;
-
-    // Calculer les scores cumulés incluant le round actuel (score primaire SEULEMENT)
-    // Cela reflète l'état actuel pour la détermination dynamique de l'underdog.
-    int myCurrentTotalScore = _currentRound.myScore;
-    int opponentCurrentTotalScore = _currentRound.opponentScore;
-
-    for (var round in widget.game.rounds) {
-      if (round.roundNumber < widget.roundNumber) {
-        myCurrentTotalScore += round.calculatePlayerTotalScore(true);
-        opponentCurrentTotalScore += round.calculatePlayerTotalScore(false);
-      }
-    }
-
-    // Fonction utilitaire pour calculer l'underdog basé sur les scores actuels
-    String? calculateUnderdogBasedOnCurrentScores() {
-      int scoreDifferenceCurrent = (myCurrentTotalScore - opponentCurrentTotalScore).abs();
-      if (myCurrentTotalScore < opponentCurrentTotalScore && scoreDifferenceCurrent >= 11) {
-        return 'me';
-      } else if (opponentCurrentTotalScore < myCurrentTotalScore && scoreDifferenceCurrent >= 11) {
-        return 'opponent';
-      }
-      return null; // Pas d'underdog si pas de différence suffisante
-    }
-
-    // D'abord, vérifier si un underdog a été désigné par un double tour non gratuit dans un round précédent.
-    // Cet état est "collant" et ne devrait être réinitialisé que par un nouveau double tour non gratuit.
-    String? actualUnderdogPlayerIdAcrossAllPreviousRounds;
-    if (widget.roundNumber > 1) {
-      for (var round in widget.game.rounds) {
-        if (round.roundNumber < widget.roundNumber && round.underdogPlayerIdAtEndOfRound != null) {
-          actualUnderdogPlayerIdAcrossAllPreviousRounds = round.underdogPlayerIdAtEndOfRound;
-          break; // Trouvé un underdog persistant, pas besoin de chercher plus loin.
-        }
-      }
-    }
-
-
-    if (isDoubleTurnTriggered) {
-      if (!isCurrentPlayerDoubleFreeTurn) {
-        // C'est un double tour NON gratuit : l'adversaire devient l'underdog pour le reste de la partie
-        newMyPlayerDidNonFreeDoubleTurn = (playerKey == 'me');
-        newOpponentPlayerDidNonFreeDoubleTurn = (playerKey == 'opponent');
-        newUnderdogPlayerIdAtEndOfRound = (playerKey == 'me') ? 'opponent' : 'me';
-      } else {
-        // C'est un double tour GRATUIT : l'underdog est déterminé dynamiquement par les scores actuels
-        // ou persiste si déjà défini par un double tour non gratuit passé.
-        newMyPlayerDidNonFreeDoubleTurn = false;
-        newOpponentPlayerDidNonFreeDoubleTurn = false;
-        // Si un underdog était déjà désigné par un double tour non gratuit avant ce round, il persiste.
-        // Sinon, on calcule basé sur les scores actuels (y compris le round en cours).
-        newUnderdogPlayerIdAtEndOfRound = actualUnderdogPlayerIdAcrossAllPreviousRounds ?? calculateUnderdogBasedOnCurrentScores();
-      }
-    } else {
-      // Ce n'est PAS un double tour : l'underdog est déterminé dynamiquement par les scores actuels
-      // ou persiste si déjà défini par un double tour non gratuit passé.
-      newMyPlayerDidNonFreeDoubleTurn = false;
-      newOpponentPlayerDidNonFreeDoubleTurn = false;
-      // Si un underdog était déjà désigné par un double tour non gratuit avant ce round, il persiste.
-      // Sinon, on calcule basé sur les scores actuels (y compris le round en cours).
-      newUnderdogPlayerIdAtEndOfRound = actualUnderdogPlayerIdAcrossAllPreviousRounds ?? calculateUnderdogBasedOnCurrentScores();
-    }
-
-    updatedRound = updatedRound.copyWith(
-      priorityPlayerId: playerKey,
-      myPlayerDidNonFreeDoubleTurn: newMyPlayerDidNonFreeDoubleTurn,
-      opponentPlayerDidNonFreeDoubleTurn: newOpponentPlayerDidNonFreeDoubleTurn,
-      underdogPlayerIdAtEndOfRound: newUnderdogPlayerIdAtEndOfRound,
-    );
-
-    _updateRoundLocally(updatedRound);
+    // Update priority and then recalculate everything
+    _currentRound = _currentRound.copyWith(priorityPlayerId: playerKey);
+    _recalculateUnderdogAndDoubleTurnFlags(); // This will use the new priorityPlayerId
+    _updateRoundLocally(_currentRound); // Persist the updated round
   }
 
   void _updateInitiative(String? playerKey) {
-    setState(() {
-      _currentRound = _currentRound.copyWith(initiativePlayerId: playerKey);
-      _recalculateUnderdogAndDoubleTurnFlags();
-    });
-    widget.onUpdateRound(_currentRound);
+    // Update initiative and then recalculate everything
+    _currentRound = _currentRound.copyWith(initiativePlayerId: playerKey);
+    _recalculateUnderdogAndDoubleTurnFlags(); // This will use the new initiativePlayerId
+    _updateRoundLocally(_currentRound); // Persist the updated round
   }
 
   void _recalculateUnderdogAndDoubleTurnFlags() {
-    int myCurrentTotalScore = _currentRound.myScore;
-    int opponentCurrentTotalScore = _currentRound.opponentScore;
+    // Note: This method is now called whenever initiative, priority, or primary score changes.
+    // It should ONLY update the flags for _currentRound, not re-assign _currentRound itself.
+    // The `_currentRound = _currentRound.copyWith(...)` is outside this method in _updatePriority, _updateInitiative, _updatePrimaryScore.
+
+    int myTotalScorePreviousRounds = 0;
+    int opponentTotalScorePreviousRounds = 0;
 
     for (var round in widget.game.rounds) {
       if (round.roundNumber < widget.roundNumber) {
-        myCurrentTotalScore += round.calculatePlayerTotalScore(true);
-        opponentCurrentTotalScore += round.calculatePlayerTotalScore(false);
+        myTotalScorePreviousRounds += round.calculatePlayerTotalScore(true);
+        opponentTotalScorePreviousRounds += round.calculatePlayerTotalScore(false);
       }
     }
 
-    String? calculateUnderdogBasedOnCurrentScores() {
-      int scoreDifferenceCurrent = (myCurrentTotalScore - opponentCurrentTotalScore).abs();
-      if (myCurrentTotalScore < opponentCurrentTotalScore && scoreDifferenceCurrent >= 11) {
-        return 'me';
-      } else if (opponentCurrentTotalScore < myCurrentTotalScore && scoreDifferenceCurrent >= 11) {
-        return 'opponent';
-      }
-      return null;
-    }
+    // Determine if Double Free Turn is available based on previous rounds' scores
+    int scoreDifferencePreviousRounds = (myTotalScorePreviousRounds - opponentTotalScorePreviousRounds).abs();
+    bool myPlayerMightHaveDoubleFreeTurnOpportunity = (myTotalScorePreviousRounds < opponentTotalScorePreviousRounds) && (scoreDifferencePreviousRounds >= 11);
+    bool opponentPlayerMightHaveDoubleFreeTurnOpportunity = (opponentTotalScorePreviousRounds < myTotalScorePreviousRounds) && (scoreDifferencePreviousRounds >= 11);
 
-    String? actualUnderdogPlayerIdAcrossAllPreviousRounds;
-    if (widget.roundNumber > 1) {
-      for (var round in widget.game.rounds) {
-        if (round.roundNumber < widget.roundNumber && round.underdogPlayerIdAtEndOfRound != null) {
-          actualUnderdogPlayerIdAcrossAllPreviousRounds = round.underdogPlayerIdAtEndOfRound;
-          break;
-        }
-      }
-    }
+    // Update these flags on _currentRound
+    _currentRound = _currentRound.copyWith(
+      myPlayerHadDoubleFreeTurn: myPlayerMightHaveDoubleFreeTurnOpportunity,
+      opponentPlayerHadDoubleFreeTurn: opponentPlayerMightHaveDoubleFreeTurnOpportunity,
+    );
 
+    // Get previous round's priority to determine who was "second"
     String? playerWhoWasSecondLastRound;
     if (widget.roundNumber > 1) {
       final previousRound = widget.game.rounds.firstWhere(
             (round) => round.roundNumber == widget.roundNumber - 1,
-        orElse: () => Round(roundNumber: 0, myScore: 0, opponentScore: 0),
+        orElse: () => Round( // Fallback
+            roundNumber: 0, myScore: 0, opponentScore: 0,
+            myQuestsSuite1: [], myQuestsSuite2: [], opponentQuestsSuite1: [], opponentQuestsSuite2: [],
+            myQuestSuite1CompletedThisRound: false, myQuestSuite2CompletedThisRound: false,
+            opponentQuestSuite1CompletedThisRound: false, opponentQuestSuite2CompletedThisRound: false,
+        ),
       );
       if (previousRound.priorityPlayerId != null) {
         playerWhoWasSecondLastRound = (previousRound.priorityPlayerId == 'me') ? 'opponent' : 'me';
@@ -281,36 +182,82 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     bool newMyPlayerDidNonFreeDoubleTurn = false;
     bool newOpponentPlayerDidNonFreeDoubleTurn = false;
 
+    // Check for persistent underdog from *any* previous round via non-free double turn
+    String? actualUnderdogPlayerIdAcrossAllPreviousRounds;
+    if (widget.roundNumber > 1) {
+      for (var round in widget.game.rounds) {
+        if (round.roundNumber < widget.roundNumber && round.underdogPlayerIdAtEndOfRound != null) {
+          actualUnderdogPlayerIdAcrossAllPreviousRounds = round.underdogPlayerIdAtEndOfRound;
+          // Break here if you want the *earliest* non-free double turn to set the underdog
+          // Or continue to find the *latest* one. Given the rules, the earliest one sets it permanently.
+          break;
+        }
+      }
+    }
 
+    // Now, determine the state for the current round
     if (isDoubleTurnTriggered) {
       if (!isCurrentPlayerDoubleFreeTurn) {
+        // C'est un double tour NON gratuit : l'adversaire devient l'underdog pour le reste de la partie
         newMyPlayerDidNonFreeDoubleTurn = (_currentRound.priorityPlayerId == 'me');
         newOpponentPlayerDidNonFreeDoubleTurn = (_currentRound.priorityPlayerId == 'opponent');
         newUnderdogPlayerIdAtEndOfRound = (_currentRound.priorityPlayerId == 'me') ? 'opponent' : 'me';
       } else {
+        // C'est un double tour GRATUIT : l'underdog est déterminé dynamiquement par les scores actuels
+        // ou persiste si déjà défini par un double tour non gratuit passé.
         newMyPlayerDidNonFreeDoubleTurn = false;
         newOpponentPlayerDidNonFreeDoubleTurn = false;
-        newUnderdogPlayerIdAtEndOfRound = actualUnderdogPlayerIdAcrossAllPreviousRounds ?? calculateUnderdogBasedOnCurrentScores();
+        newUnderdogPlayerIdAtEndOfRound = actualUnderdogPlayerIdAcrossAllPreviousRounds ?? _calculateUnderdogBasedOnCurrentScores();
       }
     } else {
+      // Ce n'est PAS un double tour : l'underdog est déterminé dynamiquement par les scores actuels
+      // ou persiste si déjà défini par un double tour non gratuit passé.
       newMyPlayerDidNonFreeDoubleTurn = false;
       newOpponentPlayerDidNonFreeDoubleTurn = false;
-      newUnderdogPlayerIdAtEndOfRound = actualUnderdogPlayerIdAcrossAllPreviousRounds ?? calculateUnderdogBasedOnCurrentScores();
+      newUnderdogPlayerIdAtEndOfRound = actualUnderdogPlayerIdAcrossAllPreviousRounds ?? _calculateUnderdogBasedOnCurrentScores();
     }
 
+    // Update _currentRound with the new flags
     _currentRound = _currentRound.copyWith(
       myPlayerDidNonFreeDoubleTurn: newMyPlayerDidNonFreeDoubleTurn,
       opponentPlayerDidNonFreeDoubleTurn: newOpponentPlayerDidNonFreeDoubleTurn,
       underdogPlayerIdAtEndOfRound: newUnderdogPlayerIdAtEndOfRound,
     );
+
+    // Call setState to rebuild the UI with the updated _currentRound values
+    // This setState is inside this helper because this helper is called from multiple places
+    // and should trigger a UI update to reflect the new flags.
+    setState(() {});
   }
+
+
+  // New helper method to calculate underdog based on current (including this round's primary) scores
+  String? _calculateUnderdogBasedOnCurrentScores() {
+    int myCurrentTotalScore = _currentRound.myScore;
+    int opponentCurrentTotalScore = _currentRound.opponentScore;
+
+    for (var round in widget.game.rounds) {
+      if (round.roundNumber < widget.roundNumber) {
+        myCurrentTotalScore += round.calculatePlayerTotalScore(true);
+        opponentCurrentTotalScore += round.calculatePlayerTotalScore(false);
+      }
+    }
+    int scoreDifferenceCurrent = (myCurrentTotalScore - opponentCurrentTotalScore).abs();
+    if (myCurrentTotalScore < opponentCurrentTotalScore && scoreDifferenceCurrent >= 11) {
+      return 'me';
+    } else if (opponentCurrentTotalScore < myCurrentTotalScore && scoreDifferenceCurrent >= 11) {
+      return 'opponent';
+    }
+    return null;
+  }
+
 
   void _updatePrimaryScore(int newScore, bool isMyPlayer) {
     setState(() {
       _currentRound = isMyPlayer
           ? _currentRound.copyWith(myScore: newScore)
           : _currentRound.copyWith(opponentScore: newScore);
-      _recalculateUnderdogAndDoubleTurnFlags();
+      _recalculateUnderdogAndDoubleTurnFlags(); // Recalculate based on new primary score
     });
     widget.onUpdateRound(_currentRound);
   }
@@ -381,8 +328,11 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
 
     bool questUpdated = false;
 
+    // Create a mutable copy of the current round to update quests
+    Round tempRound = _currentRound.copyWith(); // Using copyWith to ensure immutability pattern
+
     if (value) { // Si on veut cocher la quête
-      questUpdated = _currentRound.completeQuest(isMyPlayer, suiteIndex, questIndex);
+      questUpdated = tempRound.completeQuest(isMyPlayer, suiteIndex, questIndex);
       if (!questUpdated) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -392,7 +342,7 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
         );
       }
     } else { // Si on veut décocher la quête
-      questUpdated = _currentRound.uncompleteQuest(isMyPlayer, suiteIndex, questIndex);
+      questUpdated = tempRound.uncompleteQuest(isMyPlayer, suiteIndex, questIndex);
       if (!questUpdated) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -404,7 +354,8 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     }
 
     if (questUpdated) {
-      _updateRoundLocally(_currentRound);
+      // Update _currentRound in the state and persist
+      _updateRoundLocally(tempRound);
     }
   }
 
@@ -427,22 +378,22 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
           onPressed: () => onSelect(playerKey),
           style: ElevatedButton.styleFrom(
             backgroundColor: isSelected
-                ? Theme.of(context).primaryColor // Couleur de fond si sélectionné
-                : Theme.of(context).cardColor, // Couleur de fond par défaut (similaire à la couleur de la carte)
+                ? Theme.of(context).primaryColor
+                : Theme.of(context).cardColor,
             foregroundColor: isSelected
-                ? Colors.white // Couleur du texte si sélectionné
-                : Theme.of(context).colorScheme.onSurface, // Couleur du texte par défaut
+                ? Colors.white
+                : Theme.of(context).colorScheme.onSurface,
             side: BorderSide(
               color: isSelected
-                  ? Theme.of(context).primaryColor // Bordure de la couleur primaire si sélectionné
-                  : Colors.grey.shade400, // Bordure grise pour non sélectionné
+                  ? Theme.of(context).primaryColor
+                  : Colors.grey.shade400,
               width: 1,
             ),
             padding: padding,
             textStyle: TextStyle(fontSize: fontSize, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
-            minimumSize: const Size(0, 36), // Hauteur minimale pour la cohérence
-            elevation: isSelected ? 4 : 0, // Élévation pour le bouton sélectionné
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)), // Bords légèrement arrondis
+            minimumSize: const Size(0, 36),
+            elevation: isSelected ? 4 : 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
           ),
           child: Text(trigram),
         ),
@@ -455,7 +406,7 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     return Row(
       children: [
         SizedBox(
-          width: 80, // Largeur fixe pour le libellé
+          width: 80,
           child: Text(
             'Initiative',
             style: TextStyle(
@@ -490,7 +441,7 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     return Row(
       children: [
         SizedBox(
-          width: 80, // Largeur fixe pour le libellé
+          width: 80,
           child: Text(
             'Priorité',
             style: TextStyle(

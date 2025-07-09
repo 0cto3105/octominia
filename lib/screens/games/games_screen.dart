@@ -208,7 +208,7 @@ class _GamesScreenState extends State<GamesScreen> {
                     final String formattedResult = game.result.displayTitle.toUpperCase(); // Direct use of displayTitle
 
                     // NOUVEAU: Calculer le score sur 20 à la volée en utilisant les scores totaux des rounds
-                    final int displayScoreOutOf20 = Game.calculateScoreOutOf20(game.totalMyScore, game.totalOpponentScore);
+                    final int displayScoreOutOf20 = Game.calculateScoreOutOf20(game);
 
                     developer.log(
                       'DEBUG: Partie ${game.myPlayerName} vs ${game.opponentPlayerName}: result="${game.result.name}", formattedResult="$formattedResult", resultColor=$resultColor',
