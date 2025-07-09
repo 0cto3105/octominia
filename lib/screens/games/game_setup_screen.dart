@@ -39,24 +39,8 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
 
     // Initialisation des sliders avec les valeurs de la partie
     // S'assurer que les drops sont au minimum 1
-    _myCurrentDrops = widget.game.myDrops < 1 ? 1 : widget.game.myDrops; // Ensure min is 1
-    _opponentCurrentDrops = widget.game.opponentDrops < 1 ? 1 : widget.game.opponentDrops; // Ensure min is 1
-
-    // Assurez-vous que les factions sont bien définies si la game existe déjà
-    if (widget.game.myFactionName.isNotEmpty) {
-      _mySelectedFaction = Faction(
-          uuid: 'temp_my_uuid', // Placeholder, sera mis à jour après le chargement réel
-          name: widget.game.myFactionName,
-          orderUuid: '',
-          orderId: 0);
-    }
-    if (widget.game.opponentFactionName.isNotEmpty) {
-      _opponentSelectedFaction = Faction(
-          uuid: 'temp_opponent_uuid', // Placeholder
-          name: widget.game.opponentFactionName,
-          orderUuid: '',
-          orderId: 0);
-    }
+    _myCurrentDrops = widget.game.myDrops < 1 ? 1 : widget.game.myDrops;
+    _opponentCurrentDrops = widget.game.opponentDrops < 1 ? 1 : widget.game.opponentDrops;
 
     _myPlayerNameController.addListener(_updateGame);
     _opponentPlayerNameController.addListener(_updateGame);
@@ -82,13 +66,13 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
       if (widget.game.myFactionName.isNotEmpty) {
         _mySelectedFaction = _factions.firstWhere(
           (faction) => faction.name == widget.game.myFactionName,
-          orElse: () => null as Faction, // Gérer le cas où la faction n'est pas trouvée
+          orElse: () => null as Faction,
         );
       }
       if (widget.game.opponentFactionName.isNotEmpty) {
         _opponentSelectedFaction = _factions.firstWhere(
           (faction) => faction.name == widget.game.opponentFactionName,
-          orElse: () => null as Faction, // Gérer le cas où la faction n'est pas trouvée
+          orElse: () => null as Faction,
         );
       }
       _isLoadingFactions = false;
@@ -108,6 +92,91 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
     ));
   }
 
+  Future<Faction?> _showFactionSelectionDialog(BuildContext context, Faction? currentSelected) async {
+    return showGeneralDialog<Faction?>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (BuildContext buildContext, Animation<double> animation, Animation<double> secondaryAnimation) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Sélectionner une Faction'),
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.of(buildContext).pop(),
+            ),
+          ),
+          body: _isLoadingFactions
+              ? const Center(child: CircularProgressIndicator())
+              : SafeArea(
+                  child: GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 30.0),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      childAspectRatio: 0.7,
+                    ),
+                    itemCount: _factions.length,
+                    itemBuilder: (context, index) {
+                      final faction = _factions[index];
+                      final bool isSelected = faction.uuid == currentSelected?.uuid;
+
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.of(buildContext).pop(faction);
+                        },
+                        child: Card(
+                          color: isSelected ? Theme.of(context).primaryColor.withOpacity(0.7) : Theme.of(context).cardColor,
+                          elevation: isSelected ? 8 : 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: isSelected ? BorderSide(color: Theme.of(context).colorScheme.secondary, width: 3) : BorderSide.none,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (faction.imageUrl != null && faction.imageUrl!.isNotEmpty)
+                                ClipOval(
+                                  child: Image.asset(
+                                    faction.imageUrl!,
+                                    width: 60,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 60),
+                                  ),
+                                )
+                              else
+                                Icon(Icons.shield, size: 60, color: Theme.of(context).iconTheme.color),
+                              const SizedBox(height: 8),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                child: Text(
+                                  faction.name,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: isSelected ? Colors.white : Theme.of(context).textTheme.bodyLarge?.color,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+        );
+      },
+    );
+  }
+
   Widget _buildPlayerSetup(
       String playerName,
       TextEditingController controller,
@@ -122,47 +191,80 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          isMyPlayer ? 'Mon Joueur' : 'Adversaire',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color),
-        ),
         TextFormField(
           controller: controller,
-          decoration: InputDecoration(labelText: 'Nom du ${isMyPlayer ? 'joueur' : 'adversaire'}'),
+          decoration: InputDecoration(labelText: 'Nom ${isMyPlayer ? 'du joueur' : 'de l\'adversaire'}'),
           onChanged: (value) => _updateGame(),
         ),
         const SizedBox(height: 16.0),
-        _isLoadingFactions
-            ? const CircularProgressIndicator()
-            : DropdownButtonFormField<Faction>(
-          value: selectedFaction,
-          decoration: const InputDecoration(labelText: 'Faction'),
-          items: _factions.map((faction) {
-            return DropdownMenuItem(
-              value: faction,
-              child: Text(faction.name),
-            );
-          }).toList(),
-          onChanged: (Faction? newValue) {
-            setState(() {
-              if (isMyPlayer) {
-                _mySelectedFaction = newValue;
-              } else {
-                _opponentSelectedFaction = newValue;
-              }
-              _updateGame();
-            });
+        GestureDetector(
+          onTap: _isLoadingFactions
+              ? null
+              : () async {
+            final Faction? pickedFaction = await _showFactionSelectionDialog(context, selectedFaction);
+            if (pickedFaction != null) {
+              onFactionChanged(pickedFaction);
+            }
           },
-          isExpanded: true,
-          menuMaxHeight: 300,
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Faction',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              // NOUVEAU : Supprimer prefixIcon car nous allons gérer l'image dans le 'child'
+              suffixIcon: _isLoadingFactions
+                  ? const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+                  : const Icon(Icons.arrow_drop_down),
+            ),
+            // NOUVEAU : Utiliser un Row comme enfant direct pour un contrôle total
+            child: Row(
+              mainAxisSize: MainAxisSize.min, // La Row prendra la taille minimale nécessaire
+              children: [
+                if (selectedFaction?.imageUrl != null && selectedFaction!.imageUrl!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0), // Padding à droite de l'image
+                    child: ClipOval(
+                      child: Image.asset(
+                        selectedFaction!.imageUrl!,
+                        width: 32, // Taille de l'image
+                        height: 32,
+                        fit: BoxFit.cover, // Assure que l'image remplit l'espace
+                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 32),
+                      ),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0), // Padding pour l'icône par défaut
+                    child: Icon(Icons.shield, size: 32, color: Theme.of(context).iconTheme.color),
+                  ),
+                Expanded( // Le texte prend l'espace restant
+                  child: Text(
+                    selectedFaction?.name ?? 'Sélectionner une faction',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: selectedFaction != null ? Theme.of(context).textTheme.bodyLarge?.color : Theme.of(context).hintColor,
+                    ),
+                    overflow: TextOverflow.ellipsis, // Tronque le texte si trop long
+                    maxLines: 1, // Limite le texte à une seule ligne
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
         const SizedBox(height: 16.0),
-        Text('Drops: $currentDrops'),
+        Text('Drops: $currentDrops', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
         Slider(
           value: currentDrops.toDouble(),
-          min: 1, // Min drop is 1
-          max: 5, // Max drop is 5
-          divisions: 4, // Divisions for 1, 2, 3, 4, 5
+          min: 1,
+          max: 5,
+          divisions: 4,
           label: currentDrops.round().toString(),
           onChanged: (double value) {
             setState(() {

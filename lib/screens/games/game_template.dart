@@ -69,18 +69,18 @@ class GameTemplate extends StatelessWidget {
       );
     } else {
       String titleText;
-      switch (currentPageIndex) {
+   switch (currentPageIndex) {
         case 0:
-          titleText = 'Configuration de la Partie';
+          titleText = 'Game Setup'; // Configuration de la Partie
           break;
         case 1:
-          titleText = 'Jet de Dés & Priorité';
+          titleText = 'Dice Roll & Priority'; // Jet de Dés & Priorité
           break;
         case 7:
-          titleText = 'Résumé de la Partie';
+          titleText = 'Game Summary'; // Résumé de la Partie
           break;
         default:
-          titleText = 'Partie';
+          titleText = 'Game'; // Partie (ou 'Round' si cela fait référence aux tours de jeu)
           break;
       }
       appBarTitleWidget = Text(titleText); // Pour les autres écrans, un simple Text
