@@ -1,9 +1,8 @@
-// lib/screens/game_center_screen.dart
+// lib/screens/games/game_center.dart
 
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:octominia/models/game.dart';
-import 'package:octominia/models/round.dart'; // Tu auras toujours besoin de cet import
 import 'package:octominia/services/game_json_storage.dart';
 import 'package:octominia/screens/games/game_setup_screen.dart';
 import 'package:octominia/screens/games/game_roll_offs_screen.dart';
@@ -14,13 +13,11 @@ import 'package:octominia/screens/games/game_template.dart';
 class GamerCenterScreen extends StatefulWidget {
   final Game? initialGame;
   final Function(Game game) onGameSaved;
-  final int? initialPageIndex;
 
   const GamerCenterScreen({
     super.key,
     this.initialGame,
     required this.onGameSaved,
-    this.initialPageIndex,
   });
 
   @override
@@ -29,81 +26,51 @@ class GamerCenterScreen extends StatefulWidget {
 
 class _GamerCenterScreenState extends State<GamerCenterScreen> {
   late PageController _pageController;
-  int _currentPageIndex = 0;
-  late Game _newGame;
-  bool _gameInitiallySaved = false;
+  late Game _game;
   final GameJsonStorage _gameStorage = GameJsonStorage();
+  bool _gameHasBeenSavedOnce = false;
 
   @override
   void initState() {
     super.initState();
-    print('DEBUG: initState de GamerCenterScreen appelé !');
-
-    _newGame = widget.initialGame ?? Game(
-      id: const Uuid().v4(),
+    
+    _game = widget.initialGame ?? Game(
       date: DateTime.now(),
-      myPlayerName: 'Me',
+      myPlayerName: 'Joueur 1',
       myFactionName: '',
-      opponentPlayerName: 'Opponent',
-      opponentFactionName: '',
-      myScore: 0,
-      opponentScore: 0,
       myDrops: 1,
-      opponentDrops: 1,
       myAuxiliaryUnits: false,
+      opponentPlayerName: 'Joueur 2',
+      opponentFactionName: '',
+      opponentDrops: 1,
       opponentAuxiliaryUnits: false,
-      // SUPPRIME LA SECTION 'rounds: List.generate(...)' CI-DESSOUS
-      // Laisse le constructeur de Game gérer l'initialisation des rounds et quêtes
-      attackerPlayerId: 'me',
-      priorityPlayerIdRound1: 'me',
-      scoreOutOf20: 0,
-      gameState: GameState.setup,
     );
-    _gameInitiallySaved = widget.initialGame != null;
-
-    int startingPageIndex = widget.initialPageIndex ?? 0;
+    
+    _gameHasBeenSavedOnce = widget.initialGame != null;
 
     if (widget.initialGame != null) {
-      print('DEBUG: initialGame n\'est PAS null. GameState: ${_newGame.gameState}, Résultat: ${_newGame.result}');
-
-      switch (_newGame.gameState) {
-        case GameState.setup:
-          startingPageIndex = 0;
-          break;
-        case GameState.rollOffs:
-          startingPageIndex = 1;
-          break;
-        case GameState.round1:
-          startingPageIndex = 2;
-          break;
-        case GameState.round2:
-          startingPageIndex = 3;
-          break;
-        case GameState.round3:
-          startingPageIndex = 4;
-          break;
-        case GameState.round4:
-          startingPageIndex = 5;
-          break;
-        case GameState.round5:
-          startingPageIndex = 6;
-          break;
-        case GameState.summary:
-          startingPageIndex = 6; // Retourne au Tour 5 pour permettre l'édition
-          break;
-        case GameState.completed:
-          startingPageIndex = 7;
-          break;
-        default:
-          startingPageIndex = 0;
-          break;
-      }
-    } else {
-      print('DEBUG: initialGame est null. C\'est une nouvelle partie.');
+        // CORRECTION : On appelle la méthode maintenant publique
+        _game = _game.recalculateStateFromRound(1);
     }
+    
+    int startingPageIndex = _getPageIndexForGameState(_game.gameState);
+    _pageController = PageController(initialPage: startingPageIndex);
+  }
 
-    _currentPageIndex = startingPageIndex;
-    _pageController = PageController(initialPage: _currentPageIndex);
+  int _getPageIndexForGameState(GameState state) {
+    switch (state) {
+        case GameState.setup: return 0;
+        case GameState.rollOffs: return 1;
+        case GameState.round1: return 2;
+        case GameState.round2: return 3;
+        case GameState.round3: return 4;
+        case GameState.round4: return 5;
+        case GameState.round5: return 6;
+        case GameState.summary:
+        case GameState.completed:
+          return 7;
+        default: return 0;
+    }
   }
 
   @override
@@ -112,206 +79,105 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
     super.dispose();
   }
 
-  void _updateGameData(Game updatedGame) {
+  void _updateAndSaveGame(Game updatedGame) {
     setState(() {
-      _newGame = updatedGame;
-      // Recalcul des scores totaux du jeu après chaque mise à jour de données
-      int myTotalScore = 0;
-      int opponentTotalScore = 0;
-      for (var round in _newGame.rounds) {
-        myTotalScore += round.calculatePlayerTotalScore(true);
-        opponentTotalScore += round.calculatePlayerTotalScore(false);
-      }
-      _newGame = _newGame.copyWith(
-        myScore: myTotalScore,
-        opponentScore: opponentTotalScore,
-      );
+      _game = updatedGame;
     });
-    if (_gameInitiallySaved) {
-      _saveGame();
-    }
-  }
-
-  void _updateRoundData(Round updatedRound) {
-    setState(() {
-      final updatedRounds = List<Round>.from(_newGame.rounds);
-      final index = updatedRounds.indexWhere((r) => r.roundNumber == updatedRound.roundNumber);
-      if (index != -1) {
-        updatedRounds[index] = updatedRound;
-        _newGame = _newGame.copyWith(rounds: updatedRounds);
-        // Recalcul des scores totaux du jeu après chaque mise à jour de round
-        int myTotalScore = 0;
-        int opponentTotalScore = 0;
-        for (var round in _newGame.rounds) {
-          myTotalScore += round.calculatePlayerTotalScore(true);
-          opponentTotalScore += round.calculatePlayerTotalScore(false);
-        }
-        _newGame = _newGame.copyWith(
-          myScore: myTotalScore,
-          opponentScore: opponentTotalScore,
-        );
-      }
-    });
-    if (_gameInitiallySaved) {
-      _saveGame();
-    }
+    _saveGame();
   }
 
   Future<void> _saveGame() async {
     try {
-      if (!_gameInitiallySaved) {
-        await _gameStorage.addGame(_newGame);
-        setState(() {
-          _gameInitiallySaved = true;
-        });
+      if (!_gameHasBeenSavedOnce) {
+        await _gameStorage.addGame(_game);
+        _gameHasBeenSavedOnce = true;
       } else {
-        await _gameStorage.updateGame(_newGame);
+        await _gameStorage.updateGame(_game);
       }
-      widget.onGameSaved(_newGame);
+      widget.onGameSaved(_game);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur de sauvegarde: $e')),
-      );
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur de sauvegarde: $e')),
+        );
+      }
     }
   }
-
+  
+  void _goToPage(int pageIndex) {
+    _pageController.animateToPage(
+      pageIndex,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.ease,
+    );
+  }
+  
   void _nextPage() {
-    // Validation for GameSetupScreen (page 0)
-    if (_currentPageIndex == 0) {
-      if (_newGame.myFactionName.isEmpty || _newGame.opponentFactionName.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Veuillez sélectionner les factions pour les deux joueurs.')),
-        );
-        return;
-      }
-      // No change to gameState here, it remains GameState.setup until roll-offs
-    }
-
-    // Validation for GameRollOffsScreen (page 1)
-    if (_currentPageIndex == 1) {
-      if (_newGame.attackerPlayerId == null || _newGame.priorityPlayerIdRound1 == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Veuillez définir l\'attaquant et la priorité du Tour 1.')),
-        );
-        return;
-      }
-      if (!_gameInitiallySaved) {
-        _saveGame(); // Save after initial setup and roll-offs are complete
-      }
-      // GameState is updated below in the general case, after incrementing _currentPageIndex
-    }
-
-    if (_currentPageIndex < 7) { // If not on the last page (Summary - index 7)
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.ease,
-      );
-      setState(() {
-        _currentPageIndex++;
-        // Update gameState based on the new currentPageIndex
-        switch (_currentPageIndex) {
-          case 2: _newGame = _newGame.copyWith(gameState: GameState.round1); break;
-          case 3: _newGame = _newGame.copyWith(gameState: GameState.round2); break;
-          case 4: _newGame = _newGame.copyWith(gameState: GameState.round3); break;
-          case 5: _newGame = _newGame.copyWith(gameState: GameState.round4); break;
-          case 6: _newGame = _newGame.copyWith(gameState: GameState.round5); break;
-          case 7: _newGame = _newGame.copyWith(gameState: GameState.summary); break; // Reached summary screen
-        }
-      });
-    } else if (_currentPageIndex == 7) {
-      // On the summary screen, the "Finaliser la Partie" button (which is _nextPage)
-      setState(() {
-        // La méthode calculateScoreOutOf20 est statique et prend un objet Game
-        _newGame = _newGame.copyWith(
-          scoreOutOf20: Game.calculateScoreOutOf20(_newGame), // Utilise l'objet _newGame
-          gameState: GameState.completed, // Mark as completed
-        );
-      });
-      _saveGame(); // Final save
-      Navigator.of(context).pop(); // Exit GamerCenterScreen
+    int currentPageIndex = _pageController.page!.round();
+    if (currentPageIndex < 7) {
+      _goToPage(currentPageIndex + 1);
     }
   }
 
   void _previousPage() {
-    if (_currentPageIndex > 0) {
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.ease,
-      );
-      setState(() {
-        _currentPageIndex--;
-        // Update gameState based on the new currentPageIndex
-        switch (_currentPageIndex) {
-          case 0: _newGame = _newGame.copyWith(gameState: GameState.setup); break;
-          case 1: _newGame = _newGame.copyWith(gameState: GameState.rollOffs); break;
-          case 2: _newGame = _newGame.copyWith(gameState: GameState.round1); break;
-          case 3: _newGame = _newGame.copyWith(gameState: GameState.round2); break;
-          case 4: _newGame = _newGame.copyWith(gameState: GameState.round3); break;
-          case 5: _newGame = _newGame.copyWith(gameState: GameState.round4); break;
-          case 6: _newGame = _newGame.copyWith(gameState: GameState.round5); break;
-        }
-      });
+    int currentPageIndex = _pageController.page!.round();
+    if (currentPageIndex > 0) {
+      _goToPage(currentPageIndex - 1);
     } else {
-      // If on the first page and pressing back, pop the screen
       Navigator.of(context).pop();
     }
-  }
-
-  void _returnToList() {
-    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     return GameTemplate(
-      game: _newGame,
+      game: _game,
       pageController: _pageController,
-      currentPageIndex: _currentPageIndex,
+      currentPageIndex: _pageController.hasClients ? _pageController.page!.round() : _getPageIndexForGameState(_game.gameState),
       onPageChanged: (index) {
-        setState(() {
-          _currentPageIndex = index;
-        });
+        setState(() {});
       },
       onNextPage: _nextPage,
       onPreviousPage: _previousPage,
-      onReturnToList: _returnToList,
+      onReturnToList: () => Navigator.of(context).pop(),
       pages: [
         GameSetupScreen(
-          game: _newGame,
-          onUpdate: _updateGameData,
+          game: _game,
+          onUpdate: (updatedGame) => _updateAndSaveGame(updatedGame),
         ),
         GameRollOffsScreen(
-          game: _newGame,
-          onUpdate: _updateGameData,
+          game: _game,
+          onUpdate: (updatedGame) => _updateAndSaveGame(updatedGame),
         ),
-        GameRoundScreen(
-          game: _newGame,
-          roundNumber: 1,
-          onUpdateRound: _updateRoundData,
-        ),
-        GameRoundScreen(
-          game: _newGame,
-          roundNumber: 2,
-          onUpdateRound: _updateRoundData,
-        ),
-        GameRoundScreen(
-          game: _newGame,
-          roundNumber: 3,
-          onUpdateRound: _updateRoundData,
-        ),
-        GameRoundScreen(
-          game: _newGame,
-          roundNumber: 4,
-          onUpdateRound: _updateRoundData,
-        ),
-        GameRoundScreen(
-          game: _newGame,
-          roundNumber: 5,
-          onUpdateRound: _updateRoundData,
-        ),
+        for (int i = 1; i <= 5; i++)
+          GameRoundScreen(
+            roundNumber: i,
+            game: _game,
+            onUpdateRound: (roundNumber, {myScore, opponentScore, priorityPlayerId, initiativePlayerId}) {
+              final newGame = _game.updateRound(
+                roundNumber,
+                myScore: myScore,
+                opponentScore: opponentScore,
+                priorityPlayerId: priorityPlayerId,
+                initiativePlayerId: initiativePlayerId,
+              );
+              _updateAndSaveGame(newGame);
+            },
+            onToggleQuest: (roundNumber, suiteIndex, questIndex, isMyPlayer) {
+              final newGame = _game.toggleQuest(roundNumber, suiteIndex, questIndex, isMyPlayer);
+              _updateAndSaveGame(newGame);
+            },
+          ),
         GameSummaryScreen(
-          game: _newGame,
-          onSave: _nextPage, // The "Finaliser la Partie" button
+          game: _game,
+          onSave: () {
+            final finalGame = _game.copyWith(
+              gameState: GameState.completed,
+              scoreOutOf20: Game.calculateScoreOutOf20(_game)
+            );
+            _updateAndSaveGame(finalGame);
+            Navigator.of(context).pop();
+          },
         ),
       ],
     );

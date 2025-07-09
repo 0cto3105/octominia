@@ -2,11 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:octominia/models/game.dart'; // Assurez-vous que cette ligne est présente
+import 'package:octominia/models/game.dart';
 import 'package:octominia/services/game_json_storage.dart';
 import 'package:octominia/screens/games/game_center.dart';
-import 'package:octominia/screens/games/game_summary_screen.dart'; // Import the GameSummaryScreen (conserver pour l'instant si nécessaire ailleurs)
 import 'dart:developer' as developer;
+import 'dart:convert';
 
 class GamesScreen extends StatefulWidget {
   const GamesScreen({super.key});
@@ -27,108 +27,99 @@ class _GamesScreenState extends State<GamesScreen> {
   }
 
   Future<void> _loadGames() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() { _isLoading = true; });
     try {
       final games = await _gameStorage.loadGames();
       setState(() {
         _games = games;
         _games.sort((a, b) => b.date.compareTo(a.date));
       });
-      developer.log('DEBUG: Parties chargées: ${_games.length}', name: 'GamesScreen');
     } catch (e) {
-      developer.log('ERREUR: Échec du chargement des parties dans GamesScreen: $e', error: e, name: 'GamesScreen');
+      developer.log('ERREUR: Échec du chargement des parties: $e', name: 'GamesScreen');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() { _isLoading = false; });
+    }
+  }
+
+  void _deleteGame(Game gameToDelete) {
+    final int index = _games.indexOf(gameToDelete);
+    if (index == -1) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    
+    setState(() {
+      _games.removeAt(index);
+    });
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Partie supprimée'),
+        action: SnackBarAction(
+          label: 'ANNULER',
+          onPressed: () {
+            setState(() {
+              _games.insert(index, gameToDelete);
+            });
+          },
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    ).closed.then((reason) {
+      if (reason != SnackBarClosedReason.action) {
+        if (!mounted) return; // Vérifie si le widget est toujours dans l'arbre
+        _gameStorage.deleteGame(gameToDelete.id);
+      }
+    });
+  }
+
+  Future<void> _deleteAllGames() async {
+    await _gameStorage.clearAllGames();
+    setState(() {
+      _games.clear();
+    });
+    if(mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Toutes les parties ont été supprimées.')),
+      );
+    }
+  }
+
+  Future<void> _showDeleteAllConfirmationDialog() async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirmation'),
+          content: const Text('Êtes-vous sûr de vouloir supprimer TOUTES les parties ? Cette action est irréversible.'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Annuler'),
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+            ),
+            TextButton(
+              child: Text('Supprimer', style: TextStyle(color: Colors.red[700])),
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      _deleteAllGames();
     }
   }
 
   Future<void> _insertDemoGamesIfNeeded() async {
     if (_games.isEmpty) {
-      developer.log('Insertion de parties de démo avec les assets locaux...', name: 'GamesScreen');
       final demoGames = [
-        Game(
-          date: DateTime.now().subtract(const Duration(days: 1)),
-          myPlayerName: 'Octo',
-          myFactionName: 'Kruleboyz',
-          myFactionImageUrl: "assets/images/factions/faction_kruleboyz.jpg",
-          myScore: 70,
-          myDrops: 1,
-          myAuxiliaryUnits: false,
-          opponentScore: 30,
-          opponentPlayerName: 'Tibo',
-          opponentFactionName: 'Seraphon',
-          opponentFactionImageUrl: "assets/images/factions/faction_seraphon.jpg",
-          opponentDrops: 1,
-          opponentAuxiliaryUnits: false,
-          rounds: [],
-          notes: 'Premier match de la saison, bonne performance.',
-          scoreOutOf20: 18,
-          gameState: GameState.completed, // Make sure it's completed for demonstration
-        ),
-        Game(
-          date: DateTime.now().subtract(const Duration(days: 5)),
-          myPlayerName: 'Octo',
-          myFactionName: 'Daughters of Khaine',
-          myFactionImageUrl: "assets/images/factions/faction_daughters_of_khaine.jpg",
-          myScore: 40,
-          myDrops: 1,
-          myAuxiliaryUnits: false,
-          opponentScore: 40,
-          opponentPlayerName: 'Yohan',
-          opponentFactionName: 'Ogor Mawtribes',
-          opponentFactionImageUrl: "assets/images/factions/faction_ogor_mawtribes.jpg",
-          opponentDrops: 1,
-          opponentAuxiliaryUnits: false,
-          rounds: [],
-          notes: 'Match très serré, fin en égalité.',
-          scoreOutOf20: 10,
-          gameState: GameState.completed, // Make sure it's completed for demonstration
-        ),
-        Game(
-          date: DateTime.now().subtract(const Duration(days: 10)),
-          myPlayerName: 'Octo',
-          myFactionName: 'Stormcast Eternals',
-          myFactionImageUrl: "assets/images/factions/faction_stormcast_eternals.jpg",
-          myScore: 20,
-          myDrops: 1,
-          myAuxiliaryUnits: false,
-          opponentScore: 60,
-          opponentPlayerName: 'Marine',
-          opponentFactionName: 'Slaves to Darkness',
-          opponentFactionImageUrl: "assets/images/factions/faction_slaves_to_darkness.jpg",
-          opponentDrops: 1,
-          opponentAuxiliaryUnits: false,
-          rounds: [],
-          notes: 'Défaite cuisante, besoin de revoir ma stratégie.',
-          scoreOutOf20: 5,
-          gameState: GameState.completed, // Make sure it's completed for demonstration
-        ),
-        // Add a game that is still in progress to test "En cours"
-        Game(
-          date: DateTime.now().subtract(const Duration(hours: 2)),
-          myPlayerName: 'Octo',
-          myFactionName: 'Sylvaneth',
-          myFactionImageUrl: "assets/images/factions/faction_sylvaneth.jpg",
-          myScore: 10,
-          myDrops: 1,
-          myAuxiliaryUnits: false,
-          opponentScore: 5,
-          opponentPlayerName: 'Alex',
-          opponentFactionName: 'Skaven',
-          opponentFactionImageUrl: "assets/images/factions/faction_skaven.jpg",
-          opponentDrops: 1,
-          opponentAuxiliaryUnits: false,
-          rounds: [],
-          notes: 'Partie en cours, bon début.',
-          scoreOutOf20: 0, // Score /20 is 0 if not completed (sera ignoré avec la modification)
-          gameState: GameState.round3, // Example of in-progress state
-        ),
+        Game(date: DateTime.now().subtract(const Duration(days: 1)), myPlayerName: 'Octo', myFactionName: 'Kruleboyz', myFactionImageUrl: "assets/images/factions/faction_kruleboyz.jpg", myDrops: 1, myAuxiliaryUnits: false, opponentPlayerName: 'Tibo', opponentFactionName: 'Seraphon', opponentFactionImageUrl: "assets/images/factions/faction_seraphon.jpg", opponentDrops: 1, opponentAuxiliaryUnits: false, notes: 'Premier match.', scoreOutOf20: 18, gameState: GameState.completed),
+        Game(date: DateTime.now().subtract(const Duration(days: 5)), myPlayerName: 'Octo', myFactionName: 'Daughters of Khaine', myFactionImageUrl: "assets/images/factions/faction_daughters_of_khaine.jpg", myDrops: 1, myAuxiliaryUnits: false, opponentPlayerName: 'Yohan', opponentFactionName: 'Ogor Mawtribes', opponentFactionImageUrl: "assets/images/factions/faction_ogor_mawtribes.jpg", opponentDrops: 1, opponentAuxiliaryUnits: false, notes: 'Match très serré.', scoreOutOf20: 10, gameState: GameState.completed),
       ];
-
       for (var game in demoGames) {
         await _gameStorage.addGame(game);
       }
@@ -136,23 +127,15 @@ class _GamesScreenState extends State<GamesScreen> {
     }
   }
 
-  Color _getResultColor(GameResult result) { // Parameter type is GameResult
-    developer.log('DEBUG: Résultat pour la couleur: "$result"', name: 'GamesScreen._getResultColor');
+  Color _getResultColor(GameResult result) {
     switch (result) {
-      case GameResult.victory:
-        return Colors.green;
-      case GameResult.defeat:
-        return Colors.red;
-      case GameResult.equality:
-        return Colors.amber;
-      case GameResult.inProgress:
-      default: // Fallback for any unexpected state, though inProgress should catch most
-        developer.log('WARNING: Résultat de partie non géré ou en cours: "$result"', name: 'GamesScreen._getResultColor');
-        return Colors.blue;
+      case GameResult.victory: return Colors.green;
+      case GameResult.defeat: return Colors.red;
+      case GameResult.equality: return Colors.amber;
+      case GameState.completed:
+      case GameResult.inProgress: default: return Colors.blue;
     }
   }
-
-  // _getFormattedResultText is no longer needed as result.displayTitle is used directly
 
   void _handleGameTap(Game game) async {
     await Navigator.of(context).push(
@@ -175,6 +158,13 @@ class _GamesScreenState extends State<GamesScreen> {
         title: const Text('Games'),
         backgroundColor: Colors.amberAccent[200],
         foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep),
+            tooltip: 'Supprimer toutes les parties',
+            onPressed: _games.isEmpty ? null : _showDeleteAllConfirmationDialog,
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -187,10 +177,7 @@ class _GamesScreenState extends State<GamesScreen> {
                       const SizedBox(height: 10),
                       ElevatedButton(
                         onPressed: _insertDemoGamesIfNeeded,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          foregroundColor: Colors.black,
-                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).primaryColor, foregroundColor: Colors.black),
                         child: const Text('Ajouter des parties de démo'),
                       ),
                     ],
@@ -202,176 +189,81 @@ class _GamesScreenState extends State<GamesScreen> {
                   itemBuilder: (context, index) {
                     final game = _games[index];
                     final String formattedDate = DateFormat('dd MMM - HH:mm').format(game.date);
-                    final String myScoreText = game.myScore.toString();
-                    final String opponentScoreText = game.opponentScore.toString();
-                    final Color resultColor = _getResultColor(game.result); // game.result is now GameResult enum
-                    final String formattedResult = game.result.displayTitle.toUpperCase(); // Direct use of displayTitle
-
-                    // NOUVEAU: Calculer le score sur 20 à la volée en utilisant les scores totaux des rounds
+                    final String myScoreText = game.totalMyScore.toString();
+                    final String opponentScoreText = game.totalOpponentScore.toString();
+                    final Color resultColor = _getResultColor(game.result);
+                    final String formattedResult = game.result.displayTitle.toUpperCase();
                     final int displayScoreOutOf20 = Game.calculateScoreOutOf20(game);
 
-                    developer.log(
-                      'DEBUG: Partie ${game.myPlayerName} vs ${game.opponentPlayerName}: result="${game.result.name}", formattedResult="$formattedResult", resultColor=$resultColor',
-                      name: 'GamesScreen.CardBuilder',
-                    );
-
-                    return InkWell(
-                      onTap: () => _handleGameTap(game),
-                      child: Card(
-                        margin: const EdgeInsets.symmetric(vertical: 4.0),
-                        elevation: 4.0,
-                        shape: RoundedRectangleBorder(
+                    return Dismissible(
+                      key: ValueKey(game.id),
+                      direction: DismissDirection.endToStart,
+                      onDismissed: (direction) {
+                        _deleteGame(game);
+                      },
+                      background: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.red[700],
                           borderRadius: BorderRadius.circular(15.0),
                         ),
-                        clipBehavior: Clip.antiAlias,
-                        color: Theme.of(context).cardColor,
-                        child: SizedBox(
-                          height: 140,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: SizedBox.expand(
-                                      child: Opacity(
-                                        opacity: 0.12,
-                                        child: (game.myFactionImageUrl != null && game.myFactionImageUrl!.isNotEmpty)
-                                            ? Image.asset(
-                                                game.myFactionImageUrl!,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) {
-                                                  developer.log('ERREUR: Impossible de charger l\'image : ${game.myFactionImageUrl}', error: error, name: 'GamesScreen.ImageError');
-                                                  return Container(color: Colors.transparent, width: double.infinity, height: double.infinity);
-                                                },
-                                              )
-                                            : Container(color: Colors.transparent, width: double.infinity, height: double.infinity),
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: SizedBox.expand(
-                                      child: Opacity(
-                                        opacity: 0.12,
-                                        child: (game.opponentFactionImageUrl != null && game.opponentFactionImageUrl!.isNotEmpty)
-                                            ? Image.asset(
-                                                game.opponentFactionImageUrl!,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) {
-                                                  developer.log('ERREUR: Impossible de charger l\'image : ${game.opponentFactionImageUrl}', error: error, name: 'GamesScreen.ImageError');
-                                                  return Container(color: Colors.transparent, width: double.infinity, height: double.infinity);
-                                                },
-                                              )
-                                            : Container(color: Colors.transparent, width: double.infinity, height: double.infinity),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                        margin: const EdgeInsets.symmetric(vertical: 4.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        alignment: Alignment.centerRight,
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      child: InkWell(
+                        onTap: () => _handleGameTap(game),
+                        child: Card(
+                          margin: const EdgeInsets.symmetric(vertical: 4.0),
+                          elevation: 4.0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
+                          clipBehavior: Clip.antiAlias,
+                          color: Theme.of(context).cardColor,
+                          child: SizedBox(
+                            height: 140,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Row(
                                   children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          formattedDate,
-                                          style: TextStyle(
-                                            fontSize: 12.0,
-                                            fontWeight: FontWeight.normal,
-                                            color: Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey[500],
-                                          ),
-                                        ),
-                                        // Removed the checkmark icon as per user request
-                                      ],
-                                    ),
-                                    const Spacer(),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Text(
-                                                game.myPlayerName,
-                                                style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color ?? Colors.white),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              Text(
-                                                game.myFactionName ?? 'Faction Inconnue',
-                                                style: TextStyle(fontSize: 12.0, color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8.0),
-                                        Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          crossAxisAlignment: CrossAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              // Utilise displayScoreOutOf20 qui est calculé dynamiquement
-                                              '${displayScoreOutOf20}/20', // MODIFIÉ ICI
-                                              style: TextStyle(
-                                                fontSize: 24.0,
-                                                fontWeight: FontWeight.bold,
-                                                color: Theme.of(context).colorScheme.secondary,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2.0),
-                                            Text(
-                                              '$myScoreText - $opponentScoreText',
-                                              style: TextStyle(
-                                                fontSize: 14.0,
-                                                fontWeight: FontWeight.w600,
-                                                color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2.0),
-                                            Text(
-                                              formattedResult, // Now directly uses game.result.displayTitle
-                                              style: TextStyle(
-                                                fontSize: 14.0,
-                                                fontWeight: FontWeight.bold,
-                                                color: resultColor,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(width: 8.0),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.end,
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Text(
-                                                game.opponentPlayerName,
-                                                style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color ?? Colors.white),
-                                                textAlign: TextAlign.end,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              Text(
-                                                game.opponentFactionName ?? 'Faction Inconnue',
-                                                style: TextStyle(fontSize: 12.0, color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70),
-                                                textAlign: TextAlign.end,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const Spacer(),
+                                    Expanded(child: SizedBox.expand(child: Opacity(opacity: 0.12, child: (game.myFactionImageUrl != null && game.myFactionImageUrl!.isNotEmpty) ? Image.asset(game.myFactionImageUrl!, fit: BoxFit.cover, errorBuilder: (c, e, s) => Container(color: Colors.transparent)) : Container(color: Colors.transparent)))),
+                                    Expanded(child: SizedBox.expand(child: Opacity(opacity: 0.12, child: (game.opponentFactionImageUrl != null && game.opponentFactionImageUrl!.isNotEmpty) ? Image.asset(game.opponentFactionImageUrl!, fit: BoxFit.cover, errorBuilder: (c, e, s) => Container(color: Colors.transparent)) : Container(color: Colors.transparent)))),
                                   ],
                                 ),
-                              ),
-                            ],
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(formattedDate, style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.normal, color: Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey[500]))]),
+                                      const Spacer(),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [Text(game.myPlayerName, style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color ?? Colors.white), overflow: TextOverflow.ellipsis), Text(game.myFactionName, style: TextStyle(fontSize: 12.0, color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70), overflow: TextOverflow.ellipsis)])),
+                                          const SizedBox(width: 8.0),
+                                          Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            crossAxisAlignment: CrossAxisAlignment.center,
+                                            children: [
+                                              Text('${displayScoreOutOf20}/20', style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary)),
+                                              const SizedBox(height: 2.0),
+                                              Text('$myScoreText - $opponentScoreText', style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white)),
+                                              const SizedBox(height: 2.0),
+                                              Text(formattedResult, style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold, color: resultColor)),
+                                            ],
+                                          ),
+                                          const SizedBox(width: 8.0),
+                                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisAlignment: MainAxisAlignment.center, children: [Text(game.opponentPlayerName, style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color ?? Colors.white), textAlign: TextAlign.end, overflow: TextOverflow.ellipsis), Text(game.opponentFactionName, style: TextStyle(fontSize: 12.0, color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70), textAlign: TextAlign.end, overflow: TextOverflow.ellipsis)])),
+                                        ],
+                                      ),
+                                      const Spacer(),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

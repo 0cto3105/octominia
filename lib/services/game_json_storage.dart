@@ -109,4 +109,10 @@ class GameJsonStorage {
       developer.log('ERREUR: Lors de la suppression d\'une partie: $e', error: e, name: 'GameJsonStorage');
     }
   }
+
+  Future<void> clearAllGames() async {
+  final file = await _getLocalFile();
+  // Écrit simplement une liste JSON vide dans le fichier, ce qui efface tout.
+  await file.writeAsString('[]');
+}
 }

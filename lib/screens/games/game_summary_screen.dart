@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:octominia/models/game.dart';
-import 'package:octominia/models/round.dart';
 
 class GameSummaryScreen extends StatelessWidget {
   final Game game;
@@ -10,8 +9,8 @@ class GameSummaryScreen extends StatelessWidget {
 
   const GameSummaryScreen({super.key, required this.game, required this.onSave});
 
-  // Fonctions d'aide pour la mise en page - Pass Context
-  Widget _buildSectionTitle(BuildContext context, String title) { // context added
+  // Fonctions d'aide pour la mise en page (INCHANGÉES)
+  Widget _buildSectionTitle(BuildContext context, String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Text(
@@ -21,7 +20,7 @@ class GameSummaryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(BuildContext context, String label, String value) { // context added
+  Widget _buildInfoRow(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
@@ -47,10 +46,9 @@ class GameSummaryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Calculez les scores totaux pour le résumé
-    int myTotalScore = game.rounds.fold(0, (sum, round) => sum + round.calculatePlayerTotalScore(true));
-    int opponentTotalScore = game.rounds.fold(0, (sum, round) => sum + round.calculatePlayerTotalScore(false));
-
+    // CORRECTION : Les calculs manuels sont supprimés.
+    // On utilise directement les getters de l'objet Game.
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Game Summary'),
@@ -63,11 +61,12 @@ class GameSummaryScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSectionTitle(context, 'Scores Finaux'),
-            _buildInfoRow(context, '${game.myPlayerName}:', myTotalScore.toString()),
-            _buildInfoRow(context, '${game.opponentPlayerName}:', opponentTotalScore.toString()),
-            // Utiliser game.result.displayTitle pour afficher le résultat
-            _buildInfoRow(context, 'Résultat de la Partie:', game.result.displayTitle), // MODIFICATION ICI
-            _buildInfoRow(context, 'Score /20:', game.scoreOutOf20.toString()),
+            // CORRECTION ICI : Utilisation de game.totalMyScore
+            _buildInfoRow(context, '${game.myPlayerName}:', game.totalMyScore.toString()),
+            // CORRECTION ICI : Utilisation de game.totalOpponentScore
+            _buildInfoRow(context, '${game.opponentPlayerName}:', game.totalOpponentScore.toString()),
+            _buildInfoRow(context, 'Résultat de la Partie:', game.result.displayTitle),
+            _buildInfoRow(context, 'Score /20:', game.scoreOutOf20.toString()), // Assure-toi que scoreOutOf20 est bien calculé et sauvegardé
             const SizedBox(height: 30),
 
             if (game.notes != null && game.notes!.isNotEmpty)
@@ -83,8 +82,8 @@ class GameSummaryScreen extends StatelessWidget {
             Center(
               child: ElevatedButton.icon(
                 onPressed: onSave,
-                icon: const Icon(Icons.check), // Icône changée pour 'check' (validation)
-                label: const Text('Finaliser la Partie'), // TEXTE DU BOUTON CHANGÉ
+                icon: const Icon(Icons.check),
+                label: const Text('Finaliser la Partie'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
