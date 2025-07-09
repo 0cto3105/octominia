@@ -5,17 +5,18 @@ import 'package:uuid/uuid.dart';
 import 'package:octominia/models/game.dart';
 import 'package:octominia/models/round.dart';
 import 'package:octominia/services/game_json_storage.dart';
-import 'package:octominia/screens/game_setup_screen.dart';
-import 'package:octominia/screens/game_roll_offs_screen.dart';
-import 'package:octominia/screens/game_round_screen.dart';
-import 'package:octominia/screens/game_summary_screen.dart';
+import 'package:octominia/screens/games/game_setup_screen.dart';
+import 'package:octominia/screens/games/game_roll_offs_screen.dart';
+import 'package:octominia/screens/games/game_round_screen.dart';
+import 'package:octominia/screens/games/game_summary_screen.dart';
+import 'package:octominia/screens/games/game_template.dart'; // Importez le nouveau template
 
-class AddGameScreen extends StatefulWidget {
+class GamerCenterScreen extends StatefulWidget {
   final Game? initialGame;
   final Function(Game game) onGameSaved;
   final int? initialPageIndex;
 
-  const AddGameScreen({
+  const GamerCenterScreen({
     super.key,
     this.initialGame,
     required this.onGameSaved,
@@ -23,10 +24,10 @@ class AddGameScreen extends StatefulWidget {
   });
 
   @override
-  State<AddGameScreen> createState() => _AddGameScreenState();
+  State<GamerCenterScreen> createState() => _GamerCenterScreenState();
 }
 
-class _AddGameScreenState extends State<AddGameScreen> {
+class _GamerCenterScreenState extends State<GamerCenterScreen> {
   late PageController _pageController;
   int _currentPageIndex = 0;
   late Game _newGame;
@@ -36,10 +37,7 @@ class _AddGameScreenState extends State<AddGameScreen> {
   @override
   void initState() {
     super.initState();
-    // =========================================================================
-    // >>> SEULEMENT CETTE LIGNE DOIT ÊTRE PRÉSENTE AU DÉBUT DE INITSTATE <<<
-    print('DEBUG: initState de AddGameScreen appelé !');
-    // =========================================================================
+    print('DEBUG: initState de GamerCenterScreen appelé !');
 
     _newGame = widget.initialGame ?? Game(
       id: const Uuid().v4(),
@@ -111,10 +109,10 @@ class _AddGameScreenState extends State<AddGameScreen> {
       print('DEBUG: initialGame est null. C\'est une nouvelle partie.');
     }
 
-
     _currentPageIndex = startingPageIndex;
     _pageController = PageController(initialPage: _currentPageIndex);
   }
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -236,7 +234,7 @@ class _AddGameScreenState extends State<AddGameScreen> {
         );
       });
       _saveGame(); // Final save
-      Navigator.of(context).pop(); // Exit AddGameScreen
+      Navigator.of(context).pop(); // Exit GamerCenterScreen
     }
   }
 
@@ -271,175 +269,57 @@ class _AddGameScreenState extends State<AddGameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    String myTrigram = _newGame.myPlayerName.length >= 3 ? _newGame.myPlayerName.substring(0, 3).toUpperCase() : _newGame.myPlayerName.toUpperCase();
-    String opponentTrigram = _newGame.opponentPlayerName.length >= 3 ? _newGame.opponentPlayerName.substring(0, 3).toUpperCase() : _newGame.opponentPlayerName.toUpperCase();
-
-    Widget appBarTitleWidget;
-
-    if (_currentPageIndex >= 2 && _currentPageIndex <= 6) { // Rounds 1 to 5
-      final currentRoundIndex = _currentPageIndex - 2; // 0-indexed round number
-      final currentRound = _newGame.rounds[currentRoundIndex];
-      appBarTitleWidget = Align( // Aligner le contenu à gauche
-        alignment: Alignment.centerLeft,
-        child: Row(
-          mainAxisSize: MainAxisSize.min, // Occuper l'espace minimal
-          children: [
-            Text(
-              '${currentRound.myScore}-${currentRound.opponentScore}',
-              style: const TextStyle(
-                fontSize: 28, // Taille plus grande pour les scores
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 8), // Espace entre les scores et les noms
-            Text(
-              '$myTrigram vs $opponentTrigram',
-              style: const TextStyle(
-                fontSize: 16, // Taille plus petite pour les noms
-                color: Colors.white70,
-              ),
-            ),
-          ],
-        ),
-      );
-    } else {
-      String titleText;
-      switch (_currentPageIndex) {
-        case 0:
-          titleText = 'Configuration de la Partie';
-          break;
-        case 1:
-          titleText = 'Jet de Dés & Priorité';
-          break;
-        case 7:
-          titleText = 'Résumé de la Partie';
-          break;
-        default:
-          titleText = 'Partie';
-          break;
-      }
-      appBarTitleWidget = Text(titleText); // Pour les autres écrans, un simple Text
-    }
-
-    return PopScope(
-      canPop: _currentPageIndex == 0,
-      onPopInvoked: (didPop) {
-        if (!didPop && _currentPageIndex > 0) {
-          _previousPage();
-        }
+    return GameTemplate(
+      game: _newGame,
+      pageController: _pageController,
+      currentPageIndex: _currentPageIndex,
+      onPageChanged: (index) {
+        setState(() {
+          _currentPageIndex = index;
+        });
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: appBarTitleWidget, // Utilisation du Widget personnalisé
-          backgroundColor: Colors.redAccent,
-          centerTitle: false, // Ne pas centrer le titre pour permettre l'alignement à gauche
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.close),
-              tooltip: 'Retour à la liste des parties',
-              onPressed: _returnToList,
-            ),
-          ],
+      onNextPage: _nextPage,
+      onPreviousPage: _previousPage,
+      onReturnToList: _returnToList,
+      pages: [
+        GameSetupScreen(
+          game: _newGame,
+          onUpdate: _updateGameData,
         ),
-        body: Column(
-          children: [
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentPageIndex = index;
-                  });
-                },
-                children: [
-                  GameSetupScreen(
-                    game: _newGame,
-                    onUpdate: _updateGameData,
-                  ),
-                  GameRollOffsScreen(
-                    game: _newGame,
-                    onUpdate: _updateGameData,
-                  ),
-                  GameRoundScreen(
-                    game: _newGame,
-                    roundNumber: 1,
-                    onUpdateRound: _updateRoundData,
-                  ),
-                  GameRoundScreen(
-                    game: _newGame,
-                    roundNumber: 2,
-                    onUpdateRound: _updateRoundData,
-                  ),
-                  GameRoundScreen(
-                    game: _newGame,
-                    roundNumber: 3,
-                    onUpdateRound: _updateRoundData,
-                  ),
-                  GameRoundScreen(
-                    game: _newGame,
-                    roundNumber: 4,
-                    onUpdateRound: _updateRoundData,
-                  ),
-                  GameRoundScreen(
-                    game: _newGame,
-                    roundNumber: 5,
-                    onUpdateRound: _updateRoundData,
-                  ),
-                  GameSummaryScreen(
-                    game: _newGame,
-                    onSave: _nextPage,
-                  ),
-                ],
-              ),
-            ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row( // Nouveau Row pour le bouton Précédent et le texte du tour
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: _previousPage,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                          ),
-                          icon: const Icon(Icons.arrow_back),
-                          label: const Text(''), // Étiquette vide pour le bouton
-                        ),
-                        if (_currentPageIndex >= 2 && _currentPageIndex <= 6) // Afficher "Tour X" seulement pour les rounds
-                          Padding(
-                            padding: const EdgeInsets.only(left: 20.0), // Espacement entre le bouton et le texte
-                            child: Text(
-                              'Tour ${_currentPageIndex - 1}',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white, // Couleur du texte
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    ElevatedButton(
-                      onPressed: _nextPage,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: Text(_currentPageIndex == 7 ? 'Finaliser la Partie' : 'Suivant'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+        GameRollOffsScreen(
+          game: _newGame,
+          onUpdate: _updateGameData,
         ),
-      ),
+        GameRoundScreen(
+          game: _newGame,
+          roundNumber: 1,
+          onUpdateRound: _updateRoundData,
+        ),
+        GameRoundScreen(
+          game: _newGame,
+          roundNumber: 2,
+          onUpdateRound: _updateRoundData,
+        ),
+        GameRoundScreen(
+          game: _newGame,
+          roundNumber: 3,
+          onUpdateRound: _updateRoundData,
+        ),
+        GameRoundScreen(
+          game: _newGame,
+          roundNumber: 4,
+          onUpdateRound: _updateRoundData,
+        ),
+        GameRoundScreen(
+          game: _newGame,
+          roundNumber: 5,
+          onUpdateRound: _updateRoundData,
+        ),
+        GameSummaryScreen(
+          game: _newGame,
+          onSave: _nextPage, // The "Finaliser la Partie" button
+        ),
+      ],
     );
   }
 }

@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:octominia/database/database_helper.dart';
 import 'package:octominia/screens/collection_screen.dart';
 import 'package:octominia/screens/dashboard_screen.dart';
-import 'package:octominia/screens/games_screen.dart'; // Importez le GamesScreen
+import 'package:octominia/screens/games/games_screen.dart'; // Importez le GamesScreen
 
 import 'dart:io' show Platform;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';

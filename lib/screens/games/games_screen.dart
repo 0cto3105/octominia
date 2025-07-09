@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:octominia/models/game.dart'; // Assurez-vous que cette ligne est présente
 import 'package:octominia/services/game_json_storage.dart';
-import 'package:octominia/screens/add_game_screen.dart';
-import 'package:octominia/screens/game_summary_screen.dart'; // Import the GameSummaryScreen (conserver pour l'instant si nécessaire ailleurs)
+import 'package:octominia/screens/games/game_center.dart';
+import 'package:octominia/screens/games/game_summary_screen.dart'; // Import the GameSummaryScreen (conserver pour l'instant si nécessaire ailleurs)
 import 'dart:developer' as developer;
 
 class GamesScreen extends StatefulWidget {
@@ -157,7 +157,7 @@ class _GamesScreenState extends State<GamesScreen> {
   void _handleGameTap(Game game) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => AddGameScreen(
+        builder: (context) => GamerCenterScreen(
           initialGame: game,
           onGameSaved: (Game savedGame) {
             _loadGames();
@@ -378,7 +378,7 @@ class _GamesScreenState extends State<GamesScreen> {
         onPressed: () async {
           await Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => AddGameScreen(
+              builder: (context) => GamerCenterScreen(
                 initialGame: null,
                 onGameSaved: (Game savedGame) {
                   _loadGames();
