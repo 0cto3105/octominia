@@ -3,7 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:octominia/models/game.dart';
 import 'package:octominia/models/round.dart';
-import 'package:octominia/models/quest.dart';
+import 'package:octominia/models/quest.dart'; // Keep this as Quest is used in logic
+import 'package:octominia/widgets/round/player_score_card.dart'; // New import
+import 'package:octominia/widgets/round/primary_score_slider.dart'; // New import
+import 'package:octominia/widgets/round/quest_section.dart'; // New import
+import 'package:octominia/widgets/round/quest_checkbox.dart'; // New import
 
 
 class GameRoundScreen extends StatefulWidget {
@@ -89,7 +93,7 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
         calculatedUnderdogForThisRound = 'opponent';
       }
     }
-    
+
     _currentRound = _currentRound.copyWith(
       underdogPlayerIdAtEndOfRound: calculatedUnderdogForThisRound,
     );
@@ -107,7 +111,7 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     String? previousRoundPriorityPlayerId;
     if (widget.roundNumber > 1) {
       final previousRound = widget.game.rounds.firstWhere(
-        (round) => round.roundNumber == widget.roundNumber - 1,
+            (round) => round.roundNumber == widget.roundNumber - 1,
         orElse: () => Round(roundNumber: 0, myScore: 0, opponentScore: 0), // Fallback pour éviter null
       );
       previousRoundPriorityPlayerId = previousRound.priorityPlayerId;
@@ -151,7 +155,7 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
         opponentCurrentTotalScore += round.calculatePlayerTotalScore(false);
       }
     }
-    
+
     // Fonction utilitaire pour calculer l'underdog basé sur les scores actuels
     String? calculateUnderdogBasedOnCurrentScores() {
       int scoreDifferenceCurrent = (myCurrentTotalScore - opponentCurrentTotalScore).abs();
@@ -212,30 +216,14 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
   }
 
   void _updateInitiative(String? playerKey) {
-    // La mise à jour de l'initiative doit également potentiellement réévaluer l'underdog
-    // car elle peut influencer la condition isDoubleTurnTriggered.
-    // La façon la plus simple est de réappliquer la logique de _updatePriority
-    // en gardant la même priorité (playerKey) mais en mettant à jour l'initiative.
-    // Pour cela, nous appelons _updatePriority après avoir mis à jour l'initiative
-    // ou nous intégrons la logique de l'underdog directement ici ou dans une fonction commune.
-    // Pour l'instant, on se contente de mettre à jour l'initiative et de laisser _updatePriority
-    // gérer l'underdog quand la priorité change. Si l'utilisateur change d'abord l'initiative,
-    // puis la priorité, cela sera correct.
     setState(() {
       _currentRound = _currentRound.copyWith(initiativePlayerId: playerKey);
-      // Après avoir mis à jour l'initiative, nous devons forcer une réévaluation de l'underdog
-      // et des drapeaux de double tour, car cela peut changer la situation sans que la priorité ne change.
-      // Appelons une fonction de recalcul qui mettra à jour l'état du round.
       _recalculateUnderdogAndDoubleTurnFlags();
     });
-    // Appeler la fonction de mise à jour du parent pour persister le round
     widget.onUpdateRound(_currentRound);
   }
 
-  // Nouvelle fonction pour recalculer l'underdog et les drapeaux de double tour
-  // Utilisée après les mises à jour d'initiative ou de score.
   void _recalculateUnderdogAndDoubleTurnFlags() {
-    // Recalculer les scores cumulés incluant le round actuel (score primaire SEULEMENT)
     int myCurrentTotalScore = _currentRound.myScore;
     int opponentCurrentTotalScore = _currentRound.opponentScore;
 
@@ -246,7 +234,6 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
       }
     }
 
-    // Fonction utilitaire pour calculer l'underdog basé sur les scores actuels
     String? calculateUnderdogBasedOnCurrentScores() {
       int scoreDifferenceCurrent = (myCurrentTotalScore - opponentCurrentTotalScore).abs();
       if (myCurrentTotalScore < opponentCurrentTotalScore && scoreDifferenceCurrent >= 11) {
@@ -257,7 +244,6 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
       return null;
     }
 
-    // Première détermination de l'underdog du round à partir de l'historique
     String? actualUnderdogPlayerIdAcrossAllPreviousRounds;
     if (widget.roundNumber > 1) {
       for (var round in widget.game.rounds) {
@@ -268,7 +254,6 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
       }
     }
 
-    // Déterminer si un double tour est déclenché par les choix actuels (initiative + priorité)
     String? playerWhoWasSecondLastRound;
     if (widget.roundNumber > 1) {
       final previousRound = widget.game.rounds.firstWhere(
@@ -289,10 +274,9 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
       isDoubleTurnTriggered = true;
     }
 
-    // Récupérer l'opportunité de double tour gratuit depuis l'état persistant du round
     bool isCurrentPlayerDoubleFreeTurn = ((_currentRound.priorityPlayerId == 'me' && _currentRound.myPlayerHadDoubleFreeTurn) ||
         (_currentRound.priorityPlayerId == 'opponent' && _currentRound.opponentPlayerHadDoubleFreeTurn));
-    
+
     String? newUnderdogPlayerIdAtEndOfRound;
     bool newMyPlayerDidNonFreeDoubleTurn = false;
     bool newOpponentPlayerDidNonFreeDoubleTurn = false;
@@ -300,23 +284,20 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
 
     if (isDoubleTurnTriggered) {
       if (!isCurrentPlayerDoubleFreeTurn) {
-        // C'est un double tour NON gratuit
         newMyPlayerDidNonFreeDoubleTurn = (_currentRound.priorityPlayerId == 'me');
         newOpponentPlayerDidNonFreeDoubleTurn = (_currentRound.priorityPlayerId == 'opponent');
         newUnderdogPlayerIdAtEndOfRound = (_currentRound.priorityPlayerId == 'me') ? 'opponent' : 'me';
       } else {
-        // C'est un double tour GRATUIT. L'underdog est déterminé par les scores actuels ou celui d'avant
         newMyPlayerDidNonFreeDoubleTurn = false;
         newOpponentPlayerDidNonFreeDoubleTurn = false;
         newUnderdogPlayerIdAtEndOfRound = actualUnderdogPlayerIdAcrossAllPreviousRounds ?? calculateUnderdogBasedOnCurrentScores();
       }
     } else {
-      // Ce n'est PAS un double tour. L'underdog est déterminé par les scores actuels ou celui d'avant
       newMyPlayerDidNonFreeDoubleTurn = false;
       newOpponentPlayerDidNonFreeDoubleTurn = false;
       newUnderdogPlayerIdAtEndOfRound = actualUnderdogPlayerIdAcrossAllPreviousRounds ?? calculateUnderdogBasedOnCurrentScores();
     }
-    
+
     _currentRound = _currentRound.copyWith(
       myPlayerDidNonFreeDoubleTurn: newMyPlayerDidNonFreeDoubleTurn,
       opponentPlayerDidNonFreeDoubleTurn: newOpponentPlayerDidNonFreeDoubleTurn,
@@ -329,7 +310,6 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
       _currentRound = isMyPlayer
           ? _currentRound.copyWith(myScore: newScore)
           : _currentRound.copyWith(opponentScore: newScore);
-      // Après avoir mis à jour le score primaire, recalculer l'underdog et les drapeaux de double tour
       _recalculateUnderdogAndDoubleTurnFlags();
     });
     widget.onUpdateRound(_currentRound);
@@ -366,6 +346,30 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     return -1; // Should not happen
   }
 
+  // MODIFIÉ : Cette méthode a été déplacée ici.
+  // Helper pour vérifier si une quête est complétée dans le tour actuel ou les précédents
+  bool _isQuestActuallyCompleted(bool isMyPlayer, int suiteIndex, int questIndex) {
+    final List<Quest> targetSuiteCurrentRound = _getQuestSuite(isMyPlayer, suiteIndex);
+    if (questIndex < 0 || questIndex >= targetSuiteCurrentRound.length) return false;
+
+    // Check current round status
+    if (targetSuiteCurrentRound[questIndex].status == QuestStatus.completed) {
+      return true;
+    }
+
+    // Check previous rounds status
+    for (var round in widget.game.rounds) {
+      if (round.roundNumber < widget.roundNumber) {
+        final List<Quest> previousRoundSuite = isMyPlayer
+            ? ((suiteIndex == 1) ? round.myQuestsSuite1 : round.myQuestsSuite2)
+            : ((suiteIndex == 1) ? round.opponentQuestsSuite1 : round.opponentQuestsSuite2);
+        if (questIndex < previousRoundSuite.length && previousRoundSuite[questIndex].status == QuestStatus.completed) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 
   void _updateQuest(String questKey, bool value, bool isMyPlayer) {
     final int suiteIndex = _getSuiteIndexFromKey(questKey);
@@ -404,8 +408,6 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     }
   }
 
-
-  // --- Widgets pour l'interface utilisateur ---
 
   // MODIFIÉ : Nouvelle version de _buildPlayerSelectionButton pour un meilleur style
   Widget _buildPlayerSelectionButton({
@@ -518,340 +520,6 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
     );
   }
 
-  // Helper method to build the primary score slider and display its value
-  Widget _buildPrimaryScoreSlider(BuildContext context, int currentScore, bool isMyPlayer) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Text(
-            'Primaire',
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Theme.of(context).textTheme.bodySmall?.color),
-          ),
-        ),
-        Row(
-          children: [
-            // Affichage du chiffre à gauche du slider
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: Text(
-                currentScore.toString(),
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).primaryColor,
-                ),
-              ),
-            ),
-            Expanded(
-              child: Slider(
-                value: currentScore.toDouble(),
-                min: 0,
-                max: 10,
-                divisions: 10,
-                label: currentScore.toString(),
-                onChanged: (double value) {
-                  _updatePrimaryScore(value.round(), isMyPlayer);
-                },
-                activeColor: Theme.of(context).primaryColor,
-                inactiveColor: Theme.of(context).primaryColor.withOpacity(0.3),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // Modified to accept isEnabled
-  Widget _buildQuestCheckbox(String label, bool value, Function(bool)? onChanged, {required bool isEnabled}) {
-    return Row(
-      children: [
-        Checkbox(
-          value: value,
-          onChanged: isEnabled
-              ? (bool? newValue) {
-            if (onChanged != null) {
-              onChanged(newValue ?? false);
-            }
-          }
-              : null,
-          checkColor: Colors.white,
-          activeColor: Theme.of(context).primaryColor,
-        ),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isEnabled
-                  ? Theme.of(context).textTheme.bodyLarge?.color
-                  : Theme.of(context).disabledColor,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Helper pour vérifier si une quête est complétée dans le tour actuel ou les précédents
-  bool _isQuestActuallyCompleted(bool isMyPlayer, int suiteIndex, int questIndex) {
-    final List<Quest> targetSuite = _getQuestSuite(isMyPlayer, suiteIndex);
-    if (questIndex < 0 || questIndex >= targetSuite.length) return false;
-
-    // Check current round status
-    if (targetSuite[questIndex].status == QuestStatus.completed) {
-      return true;
-    }
-
-    // Check previous rounds status
-    for (var round in widget.game.rounds) {
-      if (round.roundNumber < widget.roundNumber) {
-        final List<Quest> previousRoundSuite = isMyPlayer
-            ? ((suiteIndex == 1) ? round.myQuestsSuite1 : round.myQuestsSuite2)
-            : ((suiteIndex == 1) ? round.opponentQuestsSuite1 : round.opponentQuestsSuite2);
-        if (questIndex < previousRoundSuite.length && previousRoundSuite[questIndex].status == QuestStatus.completed) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  Widget _buildQuestSection(BuildContext context, bool isMyPlayer) {
-    // Déterminer si les quêtes sont désactivées pour ce joueur à cause d'un double tour non gratuit
-    bool disableQuestsGlobally = (isMyPlayer && _currentRound.myPlayerDidNonFreeDoubleTurn) ||
-        (!isMyPlayer && _currentRound.opponentPlayerDidNonFreeDoubleTurn);
-
-    // Fonction pour déterminer si une quête est activée
-    bool _isQuestEnabled(int suiteIndex, int questIndex) {
-      if (disableQuestsGlobally) return false;
-
-      final List<Quest> targetSuite = _getQuestSuite(isMyPlayer, suiteIndex);
-      if (questIndex < 0 || questIndex >= targetSuite.length) return false;
-
-      final Quest currentQuest = targetSuite[questIndex];
-
-      // Une quête est activée si elle est "unlocked"
-      bool isUnlocked = currentQuest.status == QuestStatus.unlocked;
-      // Ou si elle est "completed" (pour permettre de la décocher si nécessaire)
-      bool isCompleted = currentQuest.status == QuestStatus.completed;
-
-      // Si c'est la première quête de la suite (index 0), elle est débloquée par défaut au début du round
-      // et elle est toujours activable si elle n'est pas déjà complétée dans les tours précédents.
-      if (questIndex == 0) {
-        return (isUnlocked || isCompleted);
-      } else {
-        // Pour les quêtes suivantes, elles dépendent de la complétion de la quête précédente
-        final bool previousQuestCompleted = _isQuestActuallyCompleted(isMyPlayer, suiteIndex, questIndex - 1);
-        return (previousQuestCompleted && (isUnlocked || isCompleted));
-      }
-    }
-
-    List<Quest> myQuestsSuite1 = _currentRound.myQuestsSuite1;
-    List<Quest> myQuestsSuite2 = _currentRound.myQuestsSuite2;
-    List<Quest> opponentQuestsSuite1 = _currentRound.opponentQuestsSuite1;
-    List<Quest> opponentQuestsSuite2 = _currentRound.opponentQuestsSuite2;
-
-    List<Quest> currentPlayersQuestsSuite1 = isMyPlayer ? myQuestsSuite1 : opponentQuestsSuite1;
-    List<Quest> currentPlayersQuestsSuite2 = isMyPlayer ? myQuestsSuite2 : opponentQuestsSuite2;
-
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Text(
-            'Secondaire',
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Theme.of(context).textTheme.bodySmall?.color),
-          ),
-        ),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Groupe de Quêtes 1
-                  ...List.generate(currentPlayersQuestsSuite1.length, (index) {
-                    final quest = currentPlayersQuestsSuite1[index];
-                    return _buildQuestCheckbox(
-                      '1 - ${quest.name}',
-                      quest.status == QuestStatus.completed,
-                      (newValue) => _updateQuest(
-                          (isMyPlayer ? 'myQuest' : 'opponentQuest') + '1_' + (index + 1).toString() + 'Completed',
-                          newValue,
-                          isMyPlayer),
-                      isEnabled: _isQuestEnabled(1, index),
-                    );
-                  }),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Groupe de Quêtes 2
-                  ...List.generate(currentPlayersQuestsSuite2.length, (index) {
-                    final quest = currentPlayersQuestsSuite2[index];
-                    return _buildQuestCheckbox(
-                      '2 - ${quest.name}',
-                      quest.status == QuestStatus.completed,
-                      (newValue) => _updateQuest(
-                          (isMyPlayer ? 'myQuest' : 'opponentQuest') + '2_' + (index + 1).toString() + 'Completed',
-                          newValue,
-                          isMyPlayer),
-                      isEnabled: _isQuestEnabled(2, index),
-                    );
-                  }),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPlayerScoreCard(BuildContext context, String playerName, bool isMyPlayer, int myTotalScorePreviousRounds, int opponentTotalScorePreviousRounds) {
-    // Calculer le joueur qui était second au round précédent pour déterminer le double tour
-    String? previousRoundPriorityPlayerId;
-    if (widget.roundNumber > 1) {
-      final previousRound = widget.game.rounds.firstWhere(
-            (round) => round.roundNumber == widget.roundNumber - 1,
-        orElse: () => Round(roundNumber: 0, myScore: 0, opponentScore: 0),
-      );
-      previousRoundPriorityPlayerId = previousRound.priorityPlayerId;
-    }
-
-    String? playerWhoWasSecondLastRound;
-    if (previousRoundPriorityPlayerId != null) {
-      if (previousRoundPriorityPlayerId == 'me') {
-        playerWhoWasSecondLastRound = 'opponent';
-      } else {
-        playerWhoWasSecondLastRound = 'me';
-      }
-    }
-
-    // Déterminer si un double tour est déclenché par les choix actuels (initiative + priorité)
-    bool isDoubleTurnTriggeredByCurrentChoice = false;
-    if (_currentRound.initiativePlayerId != null &&
-        _currentRound.priorityPlayerId != null &&
-        _currentRound.initiativePlayerId == playerWhoWasSecondLastRound &&
-        _currentRound.priorityPlayerId == playerWhoWasSecondLastRound &&
-        ((isMyPlayer && _currentRound.priorityPlayerId == 'me') || (!isMyPlayer && _currentRound.priorityPlayerId == 'opponent'))
-    ) {
-      isDoubleTurnTriggeredByCurrentChoice = true;
-    }
-
-    // Déterminer si le joueur est l'underdog pour ce round
-    bool isUnderdogForRound = (isMyPlayer && _currentRound.underdogPlayerIdAtEndOfRound == 'me') || (!isMyPlayer && _currentRound.underdogPlayerIdAtEndOfRound == 'opponent');
-
-    // Déterminer si le joueur a l'OPPORTUNITÉ d'un double tour gratuit (basé sur les scores passés)
-    bool isDoubleFreeTurnOpportunity = ((isMyPlayer && _currentRound.myPlayerHadDoubleFreeTurn) || (!isMyPlayer && _currentRound.opponentPlayerHadDoubleFreeTurn));
-    
-    // Déterminer si la pastille "Double Free Turn" doit être affichée (opportunité + déclenché)
-    bool showDoubleFreeTurnBadge = isDoubleFreeTurnOpportunity && isDoubleTurnTriggeredByCurrentChoice;
-
-    // Déterminer si la pastille "Going for a Double Turn" doit être affichée (déclenché mais pas gratuit)
-    bool showGoingForDoubleTurnBadge = isDoubleTurnTriggeredByCurrentChoice && !isDoubleFreeTurnOpportunity;
-
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 10.0),
-      elevation: 4.0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  playerName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.yellow, // Couleur pour le nom du joueur
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Logique d'affichage des badges par ordre de priorité
-                 if (showDoubleFreeTurnBadge)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.redAccent, // Couleur spécifique pour "Double Free Turn"
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                child: const Text(
-                  'Double Free Turn',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              )
-            else if (showGoingForDoubleTurnBadge)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.purple, // Couleur spécifique pour "Going for a Double Turn"
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'Going for a Double Turn',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              )
-            else if (isUnderdogForRound) // Cette ligne a été déplacée pour changer la priorité
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blueGrey, // Couleur pour "Underdog"
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'Underdog',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            _buildPrimaryScoreSlider(
-                context,
-                isMyPlayer ? _currentRound.myScore : _currentRound.opponentScore,
-                isMyPlayer),
-            const SizedBox(height: 20),
-            _buildQuestSection(context, isMyPlayer),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     // Les scores cumulés des rounds précédents sont toujours calculés dynamiquement pour l'affichage
@@ -866,8 +534,51 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
       }
     }
 
-    Widget myPlayerCard = _buildPlayerScoreCard(context, _myPlayerName, true, myTotalScorePreviousRounds, opponentTotalScorePreviousRounds);
-    Widget opponentPlayerCard = _buildPlayerScoreCard(context, _opponentPlayerName, false, myTotalScorePreviousRounds, opponentTotalScorePreviousRounds);
+    // Les données nécessaires pour les PlayerScoreCard
+    Map<String, dynamic> myPlayerData = {
+      'playerName': _myPlayerName,
+      'isMyPlayer': true,
+      'currentRound': _currentRound,
+      'game': widget.game,
+      'roundNumber': widget.roundNumber,
+      'onUpdatePrimaryScore': _updatePrimaryScore,
+      'onUpdateQuest': _updateQuest,
+      'isQuestActuallyCompleted': _isQuestActuallyCompleted, // Pass the method here
+    };
+
+    Map<String, dynamic> opponentPlayerData = {
+      'playerName': _opponentPlayerName,
+      'isMyPlayer': false,
+      'currentRound': _currentRound,
+      'game': widget.game,
+      'roundNumber': widget.roundNumber,
+      'onUpdatePrimaryScore': _updatePrimaryScore,
+      'onUpdateQuest': _updateQuest,
+      'isQuestActuallyCompleted': _isQuestActuallyCompleted, // Pass the method here
+    };
+
+
+    Widget myPlayerCard = PlayerScoreCard(
+      playerName: myPlayerData['playerName'],
+      isMyPlayer: myPlayerData['isMyPlayer'],
+      currentRound: myPlayerData['currentRound'],
+      game: myPlayerData['game'],
+      roundNumber: myPlayerData['roundNumber'],
+      onUpdatePrimaryScore: myPlayerData['onUpdatePrimaryScore'],
+      onUpdateQuest: myPlayerData['onUpdateQuest'],
+      isQuestActuallyCompleted: myPlayerData['isQuestActuallyCompleted'],
+    );
+
+    Widget opponentPlayerCard = PlayerScoreCard(
+      playerName: opponentPlayerData['playerName'],
+      isMyPlayer: opponentPlayerData['isMyPlayer'],
+      currentRound: opponentPlayerData['currentRound'],
+      game: opponentPlayerData['game'],
+      roundNumber: opponentPlayerData['roundNumber'],
+      onUpdatePrimaryScore: opponentPlayerData['onUpdatePrimaryScore'],
+      onUpdateQuest: opponentPlayerData['onUpdateQuest'],
+      isQuestActuallyCompleted: opponentPlayerData['isQuestActuallyCompleted'],
+    );
 
     List<Widget> orderedPlayerCards = [];
     if (_currentRound.priorityPlayerId == 'me') {
@@ -890,11 +601,11 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
             children: [
               // Jet d'initiative sur une ligne
               _buildInitiativeRow(context),
-              const SizedBox(height: 10), // Petit espace entre les deux lignes
+              const SizedBox(height: 10),
 
               // Priorité du tour sur une autre ligne
               _buildPriorityRow(context),
-              const SizedBox(height: 20), // Espace avant les cartes de joueur
+              const SizedBox(height: 20),
 
               ...orderedPlayerCards,
               const SizedBox(height: 20),

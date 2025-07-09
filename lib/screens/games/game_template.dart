@@ -28,18 +28,11 @@ class GameTemplate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String myTrigram = game.myPlayerName.length >= 3 ? game.myPlayerName.substring(0, 3).toUpperCase() : game.myPlayerName.toUpperCase();
-    String opponentTrigram = game.opponentPlayerName.length >= 3 ? game.opponentPlayerName.substring(0, 3).toUpperCase() : game.opponentPlayerName.toUpperCase();
+    // Suppression des trigrammes, utilisation directe des noms complets
+    // String myTrigram = game.myPlayerName.length >= 3 ? game.myPlayerName.substring(0, 3).toUpperCase() : game.myPlayerName.toUpperCase();
+    // String opponentTrigram = game.opponentPlayerName.length >= 3 ? game.opponentPlayerName.substring(0, 3).toUpperCase() : game.opponentPlayerName.toUpperCase();
 
     Widget appBarTitleWidget;
-
-    // Suppression du calcul manuel des scores totaux, car ils sont maintenant disponibles via les getters de l'objet game
-    // int totalMyScore = 0;
-    // int totalOpponentScore = 0;
-    // for (var round in game.rounds) {
-    //   totalMyScore += round.myScore;
-    //   totalOpponentScore += round.opponentScore;
-    // }
 
     if (currentPageIndex >= 2 && currentPageIndex <= 6) { // Rounds 1 to 5
       appBarTitleWidget = Align( // Aligner le contenu à gauche
@@ -47,9 +40,9 @@ class GameTemplate extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min, // Occuper l'espace minimal
           children: [
-            // Afficher les scores totaux de la partie en utilisant les nouveaux getters
+            // Afficher les scores totaux de la partie
             Text(
-              '${game.totalMyScore}-${game.totalOpponentScore}', // MODIFIÉ ICI pour utiliser les getters
+              '${game.totalMyScore}-${game.totalOpponentScore}',
               style: const TextStyle(
                 fontSize: 28, // Taille plus grande pour les scores
                 fontWeight: FontWeight.bold,
@@ -58,7 +51,7 @@ class GameTemplate extends StatelessWidget {
             ),
             const SizedBox(width: 8), // Espace entre les scores et les noms
             Text(
-              '$myTrigram vs $opponentTrigram',
+              '${game.myPlayerName} vs ${game.opponentPlayerName}', // MODIFIÉ ICI pour utiliser les noms complets
               style: const TextStyle(
                 fontSize: 16, // Taille plus petite pour les noms
                 color: Colors.white70,

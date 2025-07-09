@@ -42,9 +42,9 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
     _newGame = widget.initialGame ?? Game(
       id: const Uuid().v4(),
       date: DateTime.now(),
-      myPlayerName: 'Moi',
+      myPlayerName: 'Me',
       myFactionName: '',
-      opponentPlayerName: 'Adversaire',
+      opponentPlayerName: 'Opponent',
       opponentFactionName: '',
       myScore: 0,
       opponentScore: 0,

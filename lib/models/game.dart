@@ -66,9 +66,10 @@ class Game {
     if (gameState != GameState.completed) {
       return GameResult.inProgress;
     } else {
-      if (myScore > opponentScore) {
+      // Utilisez les scores totaux calculés pour la détermination du résultat
+      if (totalMyScore > totalOpponentScore) {
         return GameResult.victory;
-      } else if (myScore < opponentScore) {
+      } else if (totalMyScore < totalOpponentScore) {
         return GameResult.defeat;
       } else {
         return GameResult.equality;
@@ -76,13 +77,13 @@ class Game {
     }
   }
 
-  // NOUVEAU: Getters calculés pour les scores totaux
+  // MODIFIÉ : Getters calculés pour les scores totaux qui incluent les quêtes
   int get totalMyScore {
-    return rounds.fold(0, (sum, round) => sum + round.myScore);
+    return rounds.fold(0, (sum, round) => sum + round.calculatePlayerTotalScore(true));
   }
 
   int get totalOpponentScore {
-    return rounds.fold(0, (sum, round) => sum + round.opponentScore);
+    return rounds.fold(0, (sum, round) => sum + round.calculatePlayerTotalScore(false));
   }
 
   Game({
@@ -118,7 +119,9 @@ class Game {
                 priorityPlayerId: null,
               ),
             ),
-        this.scoreOutOf20 = scoreOutOf20 ?? Game.calculateScoreOutOf20(myScore, opponentScore),
+        // Le calcul de scoreOutOf20 sera basé sur les myScore et opponentScore initiaux ou persistés,
+        // PAS sur les totaux agrégés ici. Le score final sera calculé à la fin.
+        this.scoreOutOf20 = scoreOutOf20 ?? 0, // Initialisé à 0, ou valeur persistée
         this.gameState = gameState ?? GameState.setup;
 
   // NEW: copyWith method
@@ -177,14 +180,14 @@ class Game {
       myPlayerName: map['myPlayerName'] as String,
       myFactionName: map['myFactionName'] as String,
       myFactionImageUrl: map['myFactionImageUrl'] as String?,
-      myScore: map['myScore'] as int,
-      myDrops: map['myDrops'] as int,
+      myScore: map['myScore'] as int? ?? 0, // Utiliser le ?? 0 pour la sécurité
+      myDrops: map['myDrops'] as int? ?? 0,
       myAuxiliaryUnits: map['myAuxiliaryUnits'] as int == 1,
       opponentPlayerName: map['opponentPlayerName'] as String,
       opponentFactionName: map['opponentFactionName'] as String,
       opponentFactionImageUrl: map['opponentFactionImageUrl'] as String?,
-      opponentScore: map['opponentScore'] as int,
-      opponentDrops: map['opponentDrops'] as int,
+      opponentScore: map['opponentScore'] as int? ?? 0, // Utiliser le ?? 0 pour la sécurité
+      opponentDrops: map['opponentDrops'] as int? ?? 0,
       opponentAuxiliaryUnits: map['opponentAuxiliaryUnits'] as int == 1,
       attackerPlayerId: map['attackerPlayerId'] as String?,
       priorityPlayerIdRound1: map['priorityPlayerIdRound1'] as String?,
