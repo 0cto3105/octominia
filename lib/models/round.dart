@@ -39,7 +39,7 @@ class Round {
     this.opponentPlayerHadDoubleFreeTurn = false,
     this.myPlayerDidNonFreeDoubleTurn = false,
     this.opponentPlayerDidNonFreeDoubleTurn = false,
-  })  : myQuestsSuite1 = myQuestsSuite1 ?? _createInitialQuests(isMyPlayer: true, suiteNumber: 1),
+  }) : myQuestsSuite1 = myQuestsSuite1 ?? _createInitialQuests(isMyPlayer: true, suiteNumber: 1),
         myQuestsSuite2 = myQuestsSuite2 ?? _createInitialQuests(isMyPlayer: true, suiteNumber: 2),
         opponentQuestsSuite1 = opponentQuestsSuite1 ?? _createInitialQuests(isMyPlayer: false, suiteNumber: 1),
         opponentQuestsSuite2 = opponentQuestsSuite2 ?? _createInitialQuests(isMyPlayer: false, suiteNumber: 2);
@@ -138,7 +138,7 @@ class Round {
           if (nextQuest.status == QuestStatus.completed) {
             return false; // Cannot uncomplete if next quest is completed
           }
-           // Si la quête suivante était débloquée mais pas complétée, la re-verrouiller
+          // Si la quête suivante était débloquée mais pas complétée, la re-verrouiller
           if (nextQuest.status == QuestStatus.unlocked) {
             nextQuest.status = QuestStatus.locked;
           }
@@ -149,7 +149,6 @@ class Round {
     }
     return false; // Index de quête invalide ou quête non complétée
   }
-
 
   // Calculate total score for a player (primary + secondary)
   int calculatePlayerTotalScore(bool isMyPlayer) {
@@ -182,17 +181,17 @@ class Round {
     return null; // Pas d'underdog si les scores sont égaux
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() { // Renamed from toMap() to toJson()
     return {
       'roundNumber': roundNumber,
       'myScore': myScore,
       'opponentScore': opponentScore,
       'priorityPlayerId': priorityPlayerId,
       'initiativePlayerId': initiativePlayerId,
-      'myQuestsSuite1': myQuestsSuite1.map((q) => q.toMap()).toList(),
-      'myQuestsSuite2': myQuestsSuite2.map((q) => q.toMap()).toList(),
-      'opponentQuestsSuite1': opponentQuestsSuite1.map((q) => q.toMap()).toList(),
-      'opponentQuestsSuite2': opponentQuestsSuite2.map((q) => q.toMap()).toList(),
+      'myQuestsSuite1': myQuestsSuite1.map((q) => q.toMap()).toList(), // Assuming Quest has toMap()
+      'myQuestsSuite2': myQuestsSuite2.map((q) => q.toMap()).toList(), // Assuming Quest has toMap()
+      'opponentQuestsSuite1': opponentQuestsSuite1.map((q) => q.toMap()).toList(), // Assuming Quest has toMap()
+      'opponentQuestsSuite2': opponentQuestsSuite2.map((q) => q.toMap()).toList(), // Assuming Quest has toMap()
       // Sérialisation des nouvelles propriétés
       'underdogPlayerIdAtEndOfRound': underdogPlayerIdAtEndOfRound,
       'myPlayerHadDoubleFreeTurn': myPlayerHadDoubleFreeTurn,
@@ -202,7 +201,7 @@ class Round {
     };
   }
 
-  factory Round.fromMap(Map<String, dynamic> map) {
+  factory Round.fromJson(Map<String, dynamic> map) {
     return Round(
       roundNumber: map['roundNumber'] as int,
       myScore: map['myScore'] as int? ?? 0,
@@ -210,19 +209,19 @@ class Round {
       priorityPlayerId: map['priorityPlayerId'] as String?,
       initiativePlayerId: map['initiativePlayerId'] as String?,
       myQuestsSuite1: (map['myQuestsSuite1'] as List<dynamic>?)
-              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>))
+              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>)) // Assuming Quest has fromMap()
               .toList() ??
           _createInitialQuests(isMyPlayer: true, suiteNumber: 1),
       myQuestsSuite2: (map['myQuestsSuite2'] as List<dynamic>?)
-              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>))
+              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>)) // Assuming Quest has fromMap()
               .toList() ??
           _createInitialQuests(isMyPlayer: true, suiteNumber: 2),
       opponentQuestsSuite1: (map['opponentQuestsSuite1'] as List<dynamic>?)
-              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>))
+              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>)) // Assuming Quest has fromMap()
               .toList() ??
           _createInitialQuests(isMyPlayer: false, suiteNumber: 1),
       opponentQuestsSuite2: (map['opponentQuestsSuite2'] as List<dynamic>?)
-              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>))
+              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>)) // Assuming Quest has fromMap()
               .toList() ??
           _createInitialQuests(isMyPlayer: false, suiteNumber: 2),
       // Désérialisation des nouvelles propriétés

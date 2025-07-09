@@ -45,60 +45,28 @@ class GameSummaryScreen extends StatelessWidget {
     );
   }
 
-  // Fonction d'aide pour afficher les détails du tour
-  Widget _buildRoundDetails(BuildContext context, Round round, String myPlayerName, String opponentPlayerName) {
-    int myRoundTotal = round.calculatePlayerTotalScore(true);
-    int opponentRoundTotal = round.calculatePlayerTotalScore(false);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(
-            'Tour ${round.roundNumber}',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color),
-          ),
-        ),
-        _buildInfoRow(context, 'Priorité:', round.priorityPlayerId == 'me' ? myPlayerName : (round.priorityPlayerId == 'opponent' ? opponentPlayerName : 'Non défini')),
-        _buildInfoRow(context, '$myPlayerName Score:', myRoundTotal.toString()),
-        _buildInfoRow(context, '$opponentPlayerName Score:', opponentRoundTotal.toString()),
-        const SizedBox(height: 10),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    int myTotalScore = 0;
-    int opponentTotalScore = 0;
-    for (var round in game.rounds) {
-      myTotalScore += round.calculatePlayerTotalScore(true);
-      opponentTotalScore += round.calculatePlayerTotalScore(false);
-    }
+    // Calculez les scores totaux pour le résumé
+    int myTotalScore = game.rounds.fold(0, (sum, round) => sum + round.calculatePlayerTotalScore(true));
+    int opponentTotalScore = game.rounds.fold(0, (sum, round) => sum + round.calculatePlayerTotalScore(false));
 
-    return SingleChildScrollView(
-      child: Padding(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Game Summary'),
+        backgroundColor: Colors.amberAccent[200],
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionTitle(context, 'Informations Générales'),
-            _buildInfoRow(context, 'Date:', game.date.toLocal().toString().split(' ')[0]),
-            _buildInfoRow(context, 'Mon Joueur:', '${game.myPlayerName} (${game.myFactionName})'),
-            _buildInfoRow(context, 'Mon Score Total:', myTotalScore.toString()),
-            _buildInfoRow(context, 'Adversaire:', '${game.opponentPlayerName} (${game.opponentFactionName})'),
-            _buildInfoRow(context, 'Adversaire Score Total:', opponentTotalScore.toString()),
-            const SizedBox(height: 20),
-
-            _buildSectionTitle(context, 'Détails des Tours'),
-            ...game.rounds.map((round) => _buildRoundDetails(context, round, game.myPlayerName, game.opponentPlayerName)),
-            const SizedBox(height: 20),
-
-            _buildSectionTitle(context, 'Résumé Final'),
+            _buildSectionTitle(context, 'Scores Finaux'),
             _buildInfoRow(context, '${game.myPlayerName}:', myTotalScore.toString()),
             _buildInfoRow(context, '${game.opponentPlayerName}:', opponentTotalScore.toString()),
-            _buildInfoRow(context, 'Résultat de la Partie:', game.result.isEmpty ? Game.determineResult(myTotalScore, opponentTotalScore) : game.result),
+            // Utiliser game.result.displayTitle pour afficher le résultat
+            _buildInfoRow(context, 'Résultat de la Partie:', game.result.displayTitle), // MODIFICATION ICI
             _buildInfoRow(context, 'Score /20:', game.scoreOutOf20.toString()),
             const SizedBox(height: 30),
 

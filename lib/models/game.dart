@@ -16,6 +16,27 @@ enum GameState {
   completed, // Game finished and validated
 }
 
+// Define the GameResult enum
+enum GameResult {
+  victory,
+  defeat,
+  equality,
+  inProgress; // Added 'inProgress' to the enum
+
+  String get displayTitle {
+    switch (this) {
+      case GameResult.victory:
+        return 'Victoire';
+      case GameResult.defeat:
+        return 'Défaite';
+      case GameResult.equality:
+        return 'Égalité';
+      case GameResult.inProgress:
+        return 'En cours';
+    }
+  }
+}
+
 class Game {
   String id;
   DateTime date;
@@ -34,11 +55,26 @@ class Game {
   String? attackerPlayerId;
   String? priorityPlayerIdRound1;
   List<Round> rounds;
-  String result;
+  // REMOVED: String result; // 'result' is now a computed getter
   int scoreOutOf20;
   String? notes;
   GameState gameState;
-  String? underdogPlayerIdForGame; // NEW: Field to track the underdog for the entire game
+  String? underdogPlayerIdForGame;
+
+  // Computed property for result based on scores and game state
+  GameResult get result {
+    if (gameState != GameState.completed) {
+      return GameResult.inProgress;
+    } else {
+      if (myScore > opponentScore) {
+        return GameResult.victory;
+      } else if (myScore < opponentScore) {
+        return GameResult.defeat;
+      } else {
+        return GameResult.equality;
+      }
+    }
+  }
 
   Game({
     String? id,
@@ -58,26 +94,25 @@ class Game {
     this.attackerPlayerId,
     this.priorityPlayerIdRound1,
     List<Round>? rounds,
-    required this.result,
-    required this.scoreOutOf20,
+    int? scoreOutOf20,
     this.notes,
     GameState? gameState,
-    this.underdogPlayerIdForGame, // NEW: Add to constructor
-  })  : id = id ?? const Uuid().v4(),
-        rounds = rounds ??
-            List.generate(
-              5,
-              (index) => Round(
-                roundNumber: index + 1,
-                myScore: 0,
-                opponentScore: 0,
-                priorityPlayerId: null,
-                // Les propriétés de quêtes individuelles ne sont plus nécessaires ici,
-                // le constructeur de Round gère leur initialisation par défaut.
-              ),
-            ),
-        gameState = gameState ?? GameState.setup;
+    this.underdogPlayerIdForGame,
+  }) : id = id ?? const Uuid().v4(),
+       rounds = rounds ??
+           List.generate(
+             5,
+             (index) => Round(
+               roundNumber: index + 1,
+               myScore: 0,
+               opponentScore: 0,
+               priorityPlayerId: null,
+             ),
+           ),
+       this.scoreOutOf20 = scoreOutOf20 ?? Game.calculateScoreOutOf20(myScore, opponentScore),
+       this.gameState = gameState ?? GameState.setup;
 
+  // NEW: copyWith method
   Game copyWith({
     String? id,
     DateTime? date,
@@ -96,11 +131,10 @@ class Game {
     String? attackerPlayerId,
     String? priorityPlayerIdRound1,
     List<Round>? rounds,
-    String? result,
     int? scoreOutOf20,
     String? notes,
     GameState? gameState,
-    String? underdogPlayerIdForGame, // NEW: Add to copyWith
+    String? underdogPlayerIdForGame,
   }) {
     return Game(
       id: id ?? this.id,
@@ -113,87 +147,51 @@ class Game {
       myAuxiliaryUnits: myAuxiliaryUnits ?? this.myAuxiliaryUnits,
       opponentPlayerName: opponentPlayerName ?? this.opponentPlayerName,
       opponentFactionName: opponentFactionName ?? this.opponentFactionName,
-      opponentFactionImageUrl:
-          opponentFactionImageUrl ?? this.opponentFactionImageUrl,
+      opponentFactionImageUrl: opponentFactionImageUrl ?? this.opponentFactionImageUrl,
       opponentScore: opponentScore ?? this.opponentScore,
       opponentDrops: opponentDrops ?? this.opponentDrops,
-      opponentAuxiliaryUnits:
-          opponentAuxiliaryUnits ?? this.opponentAuxiliaryUnits,
+      opponentAuxiliaryUnits: opponentAuxiliaryUnits ?? this.opponentAuxiliaryUnits,
       attackerPlayerId: attackerPlayerId ?? this.attackerPlayerId,
-      priorityPlayerIdRound1:
-          priorityPlayerIdRound1 ?? this.priorityPlayerIdRound1,
-      rounds: rounds ?? this.rounds.map((r) => r.copyWith()).toList(), // Deep copy des rounds
-      result: result ?? this.result,
+      priorityPlayerIdRound1: priorityPlayerIdRound1 ?? this.priorityPlayerIdRound1,
+      rounds: rounds ?? this.rounds.map((r) => r.copyWith()).toList(), // Ensure Round has copyWith
       scoreOutOf20: scoreOutOf20 ?? this.scoreOutOf20,
       notes: notes ?? this.notes,
       gameState: gameState ?? this.gameState,
-      underdogPlayerIdForGame:
-          underdogPlayerIdForGame ?? this.underdogPlayerIdForGame, // NEW: Copy underdogPlayerIdForGame
+      underdogPlayerIdForGame: underdogPlayerIdForGame ?? this.underdogPlayerIdForGame,
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'date': date.toIso8601String(),
-      'myPlayerName': myPlayerName,
-      'myFactionName': myFactionName,
-      'myFactionImageUrl': myFactionImageUrl,
-      'myScore': myScore,
-      'myDrops': myDrops,
-      'myAuxiliaryUnits': myAuxiliaryUnits,
-      'opponentPlayerName': opponentPlayerName,
-      'opponentFactionName': opponentFactionName,
-      'opponentFactionImageUrl': opponentFactionImageUrl,
-      'opponentScore': opponentScore,
-      'opponentDrops': opponentDrops,
-      'opponentAuxiliaryUnits': opponentAuxiliaryUnits,
-      'attackerPlayerId': attackerPlayerId,
-      'priorityPlayerIdRound1': priorityPlayerIdRound1,
-      'rounds': rounds.map((r) => r.toMap()).toList(),
-      'result': result,
-      'scoreOutOf20': scoreOutOf20,
-      'notes': notes,
-      'gameState': gameState.name,
-      'underdogPlayerIdForGame': underdogPlayerIdForGame, // NEW: Store underdogPlayerIdForGame
-    };
-  }
-
-  factory Game.fromMap(Map<String, dynamic> map) {
+  factory Game.fromJson(Map<String, dynamic> map) {
     return Game(
-      id: map['id'] as String,
+      id: map['id'] as String?,
       date: DateTime.parse(map['date'] as String),
       myPlayerName: map['myPlayerName'] as String,
       myFactionName: map['myFactionName'] as String,
       myFactionImageUrl: map['myFactionImageUrl'] as String?,
-      myScore: map['myScore'] as int? ?? 0,
-      myDrops: map['myDrops'] as int? ?? 1,
-      myAuxiliaryUnits: map['myAuxiliaryUnits'] as bool? ?? false,
+      myScore: map['myScore'] as int,
+      myDrops: map['myDrops'] as int,
+      myAuxiliaryUnits: map['myAuxiliaryUnits'] as int == 1,
       opponentPlayerName: map['opponentPlayerName'] as String,
       opponentFactionName: map['opponentFactionName'] as String,
       opponentFactionImageUrl: map['opponentFactionImageUrl'] as String?,
-      opponentScore: map['opponentScore'] as int? ?? 0,
-      opponentDrops: map['opponentDrops'] as int? ?? 1,
-      opponentAuxiliaryUnits: map['opponentAuxiliaryUnits'] as bool? ?? false,
+      opponentScore: map['opponentScore'] as int,
+      opponentDrops: map['opponentDrops'] as int,
+      opponentAuxiliaryUnits: map['opponentAuxiliaryUnits'] as int == 1,
       attackerPlayerId: map['attackerPlayerId'] as String?,
       priorityPlayerIdRound1: map['priorityPlayerIdRound1'] as String?,
-      rounds: List<Round>.from(
-        (map['rounds'] as List<dynamic>?)
-                ?.map<Round>((x) => Round.fromMap(x as Map<String, dynamic>))
-                .toList() ??
-            List.generate(
-              5,
-              (index) => Round(
-                roundNumber: index + 1,
-                myScore: 0,
-                opponentScore: 0,
-                priorityPlayerId: null,
-                // Les propriétés de quêtes individuelles ne sont plus nécessaires ici,
-                // le constructeur de Round gère leur initialisation par défaut.
-              ),
+      rounds: (map['rounds'] as List<dynamic>?)
+              ?.map((e) => Round.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          List.generate(
+            5,
+            (index) => Round(
+              roundNumber: index + 1,
+              myScore: 0,
+              opponentScore: 0,
+              priorityPlayerId: null,
             ),
-      ),
-      result: map['result'] as String? ?? 'En cours',
+          ),
+      // 'result' is no longer read directly from map, it's a getter
       scoreOutOf20: map['scoreOutOf20'] as int? ?? 0,
       notes: map['notes'] as String?,
       gameState: map['gameState'] != null
@@ -203,24 +201,41 @@ class Game {
             )
           : GameState.setup,
       underdogPlayerIdForGame:
-          map['underdogPlayerIdForGame'] as String?, // NEW: Read underdogPlayerIdForGame from map
+          map['underdogPlayerIdForGame'] as String?,
     );
   }
 
-  static String determineResult(int myScore, int opponentScore) {
-    if (myScore > opponentScore) {
-      return 'Victoire';
-    } else if (myScore < opponentScore) {
-      return 'Défaite';
-    } else {
-      return 'Égalité';
-    }
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'date': date.toIso8601String(),
+      'myPlayerName': myPlayerName,
+      'myFactionName': myFactionName,
+      'myFactionImageUrl': myFactionImageUrl,
+      'myScore': myScore,
+      'myDrops': myDrops,
+      'myAuxiliaryUnits': myAuxiliaryUnits ? 1 : 0,
+      'opponentPlayerName': opponentPlayerName,
+      'opponentFactionName': opponentFactionName,
+      'opponentFactionImageUrl': opponentFactionImageUrl,
+      'opponentScore': opponentScore,
+      'opponentDrops': opponentDrops,
+      'opponentAuxiliaryUnits': opponentAuxiliaryUnits ? 1 : 0,
+      'attackerPlayerId': attackerPlayerId,
+      'priorityPlayerIdRound1': priorityPlayerIdRound1,
+      'rounds': rounds.map((r) => r.toJson()).toList(), // This line requires Round.toJson()
+      'result': result.name, // Store the result name based on the getter
+      'scoreOutOf20': scoreOutOf20,
+      'notes': notes,
+      'gameState': gameState.name,
+      'underdogPlayerIdForGame': underdogPlayerIdForGame,
+    };
   }
 
   static int calculateScoreOutOf20(int myScore, int opponentScore) {
     int totalScore = myScore + opponentScore;
-    if (totalScore == 0) return 10;
-    double myNormalizedScore = (myScore / totalScore) * 10;
-    return (myNormalizedScore + 5).round();
+    if (totalScore == 0) return 0;
+    double ratio = myScore / totalScore;
+    return (ratio * 20).round();
   }
 }

@@ -33,7 +33,7 @@ class _AddGameScreenState extends State<AddGameScreen> {
   bool _gameInitiallySaved = false;
   final GameJsonStorage _gameStorage = GameJsonStorage();
 
- @override
+  @override
   void initState() {
     super.initState();
     // =========================================================================
@@ -61,12 +61,9 @@ class _AddGameScreenState extends State<AddGameScreen> {
           myScore: 0,
           opponentScore: 0,
           priorityPlayerId: null,
-          // REMOVED: myQuest1_1Completed: false, etc.
-          // These boolean flags are now handled internally by the Round constructor
-          // which initializes the List<Quest> myQuestsSuite1, myQuestsSuite2, etc.
         ),
       ),
-      result: 'En cours',
+      // MODIFICATION: 'result' n'est plus un paramètre du constructeur Game. Il est maintenant un getter.
       scoreOutOf20: 0,
       gameState: GameState.setup,
     );
@@ -75,8 +72,6 @@ class _AddGameScreenState extends State<AddGameScreen> {
     int startingPageIndex = widget.initialPageIndex ?? 0;
 
     if (widget.initialGame != null) {
-      // Si cette ligne ci-dessous n'apparaît pas, c'est que le widget.initialGame est null,
-      // ce qui signifie que vous ouvrez peut-être une nouvelle partie et non une partie existante.
       print('DEBUG: initialGame n\'est PAS null. GameState: ${_newGame.gameState}, Résultat: ${_newGame.result}');
 
       switch (_newGame.gameState) {
@@ -234,8 +229,9 @@ class _AddGameScreenState extends State<AddGameScreen> {
     } else if (_currentPageIndex == 7) {
       // On the summary screen, the "Finaliser la Partie" button (which is _nextPage)
       setState(() {
+        // MODIFICATION: 'result' n'est plus défini ici, car c'est un getter de la classe Game.
+        // Il est calculé automatiquement lorsque gameState est GameState.completed.
         _newGame = _newGame.copyWith(
-          result: Game.determineResult(_newGame.myScore, _newGame.opponentScore),
           scoreOutOf20: Game.calculateScoreOutOf20(_newGame.myScore, _newGame.opponentScore),
           gameState: GameState.completed, // Mark as completed
         );
@@ -262,8 +258,6 @@ class _AddGameScreenState extends State<AddGameScreen> {
           case 4: _newGame = _newGame.copyWith(gameState: GameState.round3); break;
           case 5: _newGame = _newGame.copyWith(gameState: GameState.round4); break;
           case 6: _newGame = _newGame.copyWith(gameState: GameState.round5); break;
-          // If going back from summary, it should land on Round 5
-          // case 7: _newGame = _newGame.copyWith(gameState: GameState.summary); break; // This case is not reachable by _previousPage to index 7
         }
       });
     } else {

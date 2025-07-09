@@ -2,9 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:octominia/models/game.dart';
+import 'package:octominia/models/game.dart'; // Assurez-vous que cette ligne est présente
 import 'package:octominia/services/game_json_storage.dart';
-import 'package:octominia/screens/add_game_screen.dart'; // Assurez-vous que cette ligne est présente
+import 'package:octominia/screens/add_game_screen.dart';
 import 'package:octominia/screens/game_summary_screen.dart'; // Import the GameSummaryScreen (conserver pour l'instant si nécessaire ailleurs)
 import 'dart:developer' as developer;
 
@@ -65,9 +65,9 @@ class _GamesScreenState extends State<GamesScreen> {
           opponentDrops: 1,
           opponentAuxiliaryUnits: false,
           rounds: [],
-          result: 'VICTOIRE',
           notes: 'Premier match de la saison, bonne performance.',
           scoreOutOf20: 18,
+          gameState: GameState.completed, // Make sure it's completed for demonstration
         ),
         Game(
           date: DateTime.now().subtract(const Duration(days: 5)),
@@ -84,9 +84,9 @@ class _GamesScreenState extends State<GamesScreen> {
           opponentDrops: 1,
           opponentAuxiliaryUnits: false,
           rounds: [],
-          result: 'EGALITE',
           notes: 'Match très serré, fin en égalité.',
           scoreOutOf20: 10,
+          gameState: GameState.completed, // Make sure it's completed for demonstration
         ),
         Game(
           date: DateTime.now().subtract(const Duration(days: 10)),
@@ -103,9 +103,29 @@ class _GamesScreenState extends State<GamesScreen> {
           opponentDrops: 1,
           opponentAuxiliaryUnits: false,
           rounds: [],
-          result: 'DEFAITE',
           notes: 'Défaite cuisante, besoin de revoir ma stratégie.',
           scoreOutOf20: 5,
+          gameState: GameState.completed, // Make sure it's completed for demonstration
+        ),
+        // Add a game that is still in progress to test "En cours"
+        Game(
+          date: DateTime.now().subtract(const Duration(hours: 2)),
+          myPlayerName: 'Octo',
+          myFactionName: 'Sylvaneth',
+          myFactionImageUrl: "assets/images/factions/faction_sylvaneth.jpg",
+          myScore: 10,
+          myDrops: 1,
+          myAuxiliaryUnits: false,
+          opponentScore: 5,
+          opponentPlayerName: 'Alex',
+          opponentFactionName: 'Skaven',
+          opponentFactionImageUrl: "assets/images/factions/faction_skaven.jpg",
+          opponentDrops: 1,
+          opponentAuxiliaryUnits: false,
+          rounds: [],
+          notes: 'Partie en cours, bon début.',
+          scoreOutOf20: 0, // Score /20 is 0 if not completed
+          gameState: GameState.round3, // Example of in-progress state
         ),
       ];
 
@@ -116,43 +136,35 @@ class _GamesScreenState extends State<GamesScreen> {
     }
   }
 
-  Color _getResultColor(String result) {
-    developer.log('DEBUG: Chaîne de résultat pour la couleur: "$result"', name: 'GamesScreen._getResultColor');
-    switch (result.toUpperCase()) {
-      case 'VICTOIRE_MAJEURE':
-      case 'VICTOIRE':
+  Color _getResultColor(GameResult result) { // Parameter type is GameResult
+    developer.log('DEBUG: Résultat pour la couleur: "$result"', name: 'GamesScreen._getResultColor');
+    switch (result) {
+      case GameResult.victory:
         return Colors.green;
-      case 'DEFAITE_MAJEURE':
-      case 'DEFAITE':
+      case GameResult.defeat:
         return Colors.red;
-      case 'EGALITE':
+      case GameResult.equality:
         return Colors.amber;
-      default:
-        developer.log('WARNING: Résultat de partie non géré: "$result"', name: 'GamesScreen._getResultColor');
+      case GameResult.inProgress:
+      default: // Fallback for any unexpected state, though inProgress should catch most
+        developer.log('WARNING: Résultat de partie non géré ou en cours: "$result"', name: 'GamesScreen._getResultColor');
         return Colors.blue;
     }
   }
 
-  String _getFormattedResultText(String result) {
-    return result.replaceAll('_', ' ').toUpperCase();
-  }
+  // _getFormattedResultText is no longer needed as result.displayTitle is used directly
 
-  // --- FONCTION MODIFIÉE POUR GÉRER LE CLIC SUR UNE CARTE DE PARTIE ---
   void _handleGameTap(Game game) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => AddGameScreen( // CHANGEMENT ICI : Ouvrir AddGameScreen
-          initialGame: game, // Passer la partie existante pour édition
+        builder: (context) => AddGameScreen(
+          initialGame: game,
           onGameSaved: (Game savedGame) {
-            // Callback déclenché après la sauvegarde d'une partie éditée.
-            // On recharge les parties pour rafraîchir la liste si des modifications ont eu lieu.
             _loadGames();
           },
         ),
       ),
     );
-    // Après être revenu de AddGameScreen, rechargez les parties au cas où des modifications
-    // (comme la suppression ou la mise à jour) auraient été faites.
     _loadGames();
   }
 
@@ -192,15 +204,15 @@ class _GamesScreenState extends State<GamesScreen> {
                     final String formattedDate = DateFormat('dd MMM - HH:mm').format(game.date);
                     final String myScoreText = game.myScore.toString();
                     final String opponentScoreText = game.opponentScore.toString();
-                    final Color resultColor = _getResultColor(game.result);
-                    final String formattedResult = _getFormattedResultText(game.result);
+                    final Color resultColor = _getResultColor(game.result); // game.result is now GameResult enum
+                    final String formattedResult = game.result.displayTitle.toUpperCase(); // Direct use of displayTitle
 
                     developer.log(
-                      'DEBUG: Partie ${game.myPlayerName} vs ${game.opponentPlayerName}: result="${game.result}", formattedResult="$formattedResult", resultColor=$resultColor',
+                      'DEBUG: Partie ${game.myPlayerName} vs ${game.opponentPlayerName}: result="${game.result.name}", formattedResult="$formattedResult", resultColor=$resultColor',
                       name: 'GamesScreen.CardBuilder',
                     );
 
-                    return InkWell( // Wrap the Card with InkWell for tap detection
+                    return InkWell(
                       onTap: () => _handleGameTap(game),
                       child: Card(
                         margin: const EdgeInsets.symmetric(vertical: 4.0),
@@ -211,7 +223,7 @@ class _GamesScreenState extends State<GamesScreen> {
                         clipBehavior: Clip.antiAlias,
                         color: Theme.of(context).cardColor,
                         child: SizedBox(
-                          height: 140, // Hauteur de la carte conservée
+                          height: 140,
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
@@ -269,19 +281,18 @@ class _GamesScreenState extends State<GamesScreen> {
                                             color: Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey[500],
                                           ),
                                         ),
+                                        // Removed the checkmark icon as per user request
                                       ],
                                     ),
-                                    const Spacer(), // Pousse la Row suivante vers le bas
+                                    const Spacer(),
                                     Row(
-                                      // *** NOUVELLE STRUCTURE POUR LE CENTRAGE HORIZONTAL DES 3 BLOCS ***
-                                      mainAxisAlignment: MainAxisAlignment.center, // Centrer le contenu global de cette Row
-                                      crossAxisAlignment: CrossAxisAlignment.center, // Centrage vertical des éléments dans cette Row
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.center,
                                       children: [
-                                        // Bloc "Moi" (ALIGNÉ À GAUCHE DANS SON Expanded)
                                         Expanded(
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start, // ALIGNEMENT À GAUCHE
-                                            mainAxisAlignment: MainAxisAlignment.center, // Centrage vertical dans la colonne
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisAlignment: MainAxisAlignment.center,
                                             children: [
                                               Text(
                                                 game.myPlayerName,
@@ -296,11 +307,10 @@ class _GamesScreenState extends State<GamesScreen> {
                                             ],
                                           ),
                                         ),
-                                        const SizedBox(width: 8.0), // Espacement entre les blocs
-                                        // Bloc de Scoring (TOUJOURS BIEN CENTRÉ)
+                                        const SizedBox(width: 8.0),
                                         Column(
-                                          mainAxisAlignment: MainAxisAlignment.center, // Centrage vertical dans la colonne
-                                          crossAxisAlignment: CrossAxisAlignment.center, // ALIGNEMENT AU CENTRE pour le texte du scoring
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          crossAxisAlignment: CrossAxisAlignment.center,
                                           children: [
                                             Text(
                                               '${game.scoreOutOf20}/20',
@@ -321,7 +331,7 @@ class _GamesScreenState extends State<GamesScreen> {
                                             ),
                                             const SizedBox(height: 2.0),
                                             Text(
-                                              formattedResult,
+                                              formattedResult, // Now directly uses game.result.displayTitle
                                               style: TextStyle(
                                                 fontSize: 14.0,
                                                 fontWeight: FontWeight.bold,
@@ -330,23 +340,22 @@ class _GamesScreenState extends State<GamesScreen> {
                                             ),
                                           ],
                                         ),
-                                        const SizedBox(width: 8.0), // Espacement entre les blocs
-                                        // Bloc "Adversaire" (ALIGNÉ À DROITE DANS SON Expanded)
+                                        const SizedBox(width: 8.0),
                                         Expanded(
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.end, // ALIGNEMENT À DROITE
-                                            mainAxisAlignment: MainAxisAlignment.center, // Centrage vertical dans la colonne
+                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                            mainAxisAlignment: MainAxisAlignment.center,
                                             children: [
                                               Text(
                                                 game.opponentPlayerName,
                                                 style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.headlineSmall?.color ?? Colors.white),
-                                                textAlign: TextAlign.end, // Important pour l'alignement du texte lui-même
+                                                textAlign: TextAlign.end,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                               Text(
                                                 game.opponentFactionName ?? 'Faction Inconnue',
                                                 style: TextStyle(fontSize: 12.0, color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.white70),
-                                                textAlign: TextAlign.end, // Important pour l'alignement du texte lui-même
+                                                textAlign: TextAlign.end,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                             ],
@@ -354,7 +363,7 @@ class _GamesScreenState extends State<GamesScreen> {
                                         ),
                                       ],
                                     ),
-                                    const Spacer(), // Pousse la Row précédente vers le haut
+                                    const Spacer(),
                                   ],
                                 ),
                               ),
@@ -370,11 +379,9 @@ class _GamesScreenState extends State<GamesScreen> {
           await Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => AddGameScreen(
-                initialGame: null, // Indique que c'est une nouvelle partie
+                initialGame: null,
                 onGameSaved: (Game savedGame) {
-                  // Callback déclenché après la sauvegarde d'une nouvelle partie
-                  // ou la mise à jour d'une partie existante.
-                  _loadGames(); // Rechargez toutes les parties pour rafraîchir la liste.
+                  _loadGames();
                 },
               ),
             ),

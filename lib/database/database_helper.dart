@@ -6,11 +6,6 @@ import 'package:path/path.dart';
 import 'package:octominia/models/order.dart';
 import 'package:octominia/models/faction.dart';
 import 'package:octominia/models/unit.dart';
-import 'package:octominia/models/keyword.dart';
-import 'package:octominia/models/ability.dart';
-import 'package:octominia/models/weapon.dart';
-import 'package:octominia/models/my_collection_item.dart';
-// import 'package:octominia/models/game.dart'; // <-- Supprimez cet import
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -157,27 +152,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // <-- Supprimez la création de la table 'games' ici
-    /*
-    await db.execute('''
-      CREATE TABLE games(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT NOT NULL,
-        myPlayerName TEXT NOT NULL,
-        myFactionName TEXT NOT NULL,
-        mySubFactionName TEXT,
-        myFactionImageUrl TEXT,
-        myScore INTEGER NOT NULL,
-        opponentScore INTEGER NOT NULL,
-        opponentPlayerName TEXT NOT NULL,
-        opponentFactionName TEXT NOT NULL,
-        opponentSubFactionName TEXT,
-        opponentFactionImageUrl TEXT,
-        result TEXT NOT NULL,
-        notes TEXT
-      )
-    ''');
-    */
   }
 
   @override
@@ -211,7 +185,6 @@ class DatabaseHelper {
 
     if (oldVersion < 4) {
       print('Migrating DB from version $oldVersion to 4 (adding UUIDs and recreating tables)');
-      // Assurez-vous de supprimer TOUTES les tables avant de les recréer.
       await db.execute('DROP TABLE IF EXISTS my_collection');
       await db.execute('DROP TABLE IF EXISTS unit_weapons');
       await db.execute('DROP TABLE IF EXISTS weapons');
@@ -222,38 +195,11 @@ class DatabaseHelper {
       await db.execute('DROP TABLE IF EXISTS units');
       await db.execute('DROP TABLE IF EXISTS factions');
       await db.execute('DROP TABLE IF EXISTS orders');
-      // <-- Supprimez la suppression de la table 'games' ici si elle était présente
-      // await db.execute('DROP TABLE IF EXISTS games');
 
       await _createAllTables(db); // Appelle la méthode qui contient le nouveau schéma
       print('Tables recréées avec le schéma de la version 4.');
     }
 
-    // <-- Supprimez la migration pour la version 5 (ajout de la table 'games')
-    /*
-    if (oldVersion < 5) {
-      print('Migrating DB from version $oldVersion to 5 (adding games table)');
-      await db.execute('''
-        CREATE TABLE games(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          date TEXT NOT NULL,
-          myPlayerName TEXT NOT NULL,
-          myFactionName TEXT NOT NULL,
-          mySubFactionName TEXT,
-          myFactionImageUrl TEXT,
-          myScore INTEGER NOT NULL,
-          opponentScore INTEGER NOT NULL,
-          opponentPlayerName TEXT NOT NULL,
-          opponentFactionName TEXT NOT NULL,
-          opponentSubFactionName TEXT,
-          opponentFactionImageUrl TEXT,
-          result TEXT NOT NULL,
-          notes TEXT
-        )
-      ''');
-      print('Table games créée pour la version 5.');
-    }
-    */
   }
 
   Future<void> deleteAllData() async {
@@ -348,7 +294,6 @@ class DatabaseHelper {
     }
     print('Factions synchronisées. Mappage UUID->ID: $factionUuidToId');
 
-    // 3. Synchronisation des Unités
     print('Synchronisation des unités...');
     final String unitsJsonString = await rootBundle.loadString('assets/data/units.json');
     final List<dynamic> unitsJson = json.decode(unitsJsonString);
@@ -410,7 +355,6 @@ class DatabaseHelper {
     return await db.insert('factions', faction, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  // MODIFICATION ICI: Changer le type de retour et mapper les Maps aux objets Faction
   Future<List<Faction>> getFactions() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('factions');
@@ -521,5 +465,4 @@ class DatabaseHelper {
     );
   }
 
-  // --- Les méthodes pour la table Games ont été supprimées, car elles sont maintenant gérées par GameJsonStorage ---
 }

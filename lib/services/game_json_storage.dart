@@ -37,7 +37,8 @@ class GameJsonStorage {
 
       return jsonList.map((json) {
         try {
-          return Game.fromMap(json as Map<String, dynamic>);
+          // MODIFICATION ICI: Utilise Game.fromJson
+          return Game.fromJson(json as Map<String, dynamic>);
         } catch (e) {
           developer.log('ERREUR: Lors de la désérialisation d\'une partie depuis JSON: $e', error: e, name: 'GameJsonStorage');
           developer.log('DEBUG: Données JSON problématiques: $json', name: 'GameJsonStorage');
@@ -53,7 +54,8 @@ class GameJsonStorage {
   Future<void> _saveGames(List<Game> games) async {
     try {
       final file = await _getLocalFile();
-      final List<Map<String, dynamic>> jsonList = games.map((game) => game.toMap()).toList();
+      // MODIFICATION ICI: Utilise game.toJson()
+      final List<Map<String, dynamic>> jsonList = games.map((game) => game.toJson()).toList();
       final jsonString = jsonEncode(jsonList);
       await file.writeAsString(jsonString);
       developer.log('DEBUG: Parties sauvegardées avec succès. Nombre de parties: ${games.length}', name: 'GameJsonStorage');
