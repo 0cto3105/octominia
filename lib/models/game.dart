@@ -76,19 +76,28 @@ class Game {
     }
   }
 
+  // NOUVEAU: Getters calculés pour les scores totaux
+  int get totalMyScore {
+    return rounds.fold(0, (sum, round) => sum + round.myScore);
+  }
+
+  int get totalOpponentScore {
+    return rounds.fold(0, (sum, round) => sum + round.opponentScore);
+  }
+
   Game({
     String? id,
     required this.date,
     required this.myPlayerName,
     required this.myFactionName,
     this.myFactionImageUrl,
-    required this.myScore,
+    required this.myScore, // Gardé pour la compatibilité, mais sera moins utilisé
     required this.myDrops,
     required this.myAuxiliaryUnits,
     required this.opponentPlayerName,
     required this.opponentFactionName,
     this.opponentFactionImageUrl,
-    required this.opponentScore,
+    required this.opponentScore, // Gardé pour la compatibilité, mais sera moins utilisé
     required this.opponentDrops,
     required this.opponentAuxiliaryUnits,
     this.attackerPlayerId,
@@ -99,18 +108,18 @@ class Game {
     GameState? gameState,
     this.underdogPlayerIdForGame,
   }) : id = id ?? const Uuid().v4(),
-       rounds = rounds ??
-           List.generate(
-             5,
-             (index) => Round(
-               roundNumber: index + 1,
-               myScore: 0,
-               opponentScore: 0,
-               priorityPlayerId: null,
-             ),
-           ),
-       this.scoreOutOf20 = scoreOutOf20 ?? Game.calculateScoreOutOf20(myScore, opponentScore),
-       this.gameState = gameState ?? GameState.setup;
+        rounds = rounds ??
+            List.generate(
+              5,
+              (index) => Round(
+                roundNumber: index + 1,
+                myScore: 0,
+                opponentScore: 0,
+                priorityPlayerId: null,
+              ),
+            ),
+        this.scoreOutOf20 = scoreOutOf20 ?? Game.calculateScoreOutOf20(myScore, opponentScore),
+        this.gameState = gameState ?? GameState.setup;
 
   // NEW: copyWith method
   Game copyWith({
@@ -180,8 +189,8 @@ class Game {
       attackerPlayerId: map['attackerPlayerId'] as String?,
       priorityPlayerIdRound1: map['priorityPlayerIdRound1'] as String?,
       rounds: (map['rounds'] as List<dynamic>?)
-              ?.map((e) => Round.fromJson(e as Map<String, dynamic>))
-              .toList() ??
+          ?.map((e) => Round.fromJson(e as Map<String, dynamic>))
+          .toList() ??
           List.generate(
             5,
             (index) => Round(
@@ -212,13 +221,13 @@ class Game {
       'myPlayerName': myPlayerName,
       'myFactionName': myFactionName,
       'myFactionImageUrl': myFactionImageUrl,
-      'myScore': myScore,
+      'myScore': myScore, // Ces valeurs devront être mises à jour ailleurs si elles doivent refléter le total
       'myDrops': myDrops,
       'myAuxiliaryUnits': myAuxiliaryUnits ? 1 : 0,
       'opponentPlayerName': opponentPlayerName,
       'opponentFactionName': opponentFactionName,
       'opponentFactionImageUrl': opponentFactionImageUrl,
-      'opponentScore': opponentScore,
+      'opponentScore': opponentScore, // Ces valeurs devront être mises à jour ailleurs si elles doivent refléter le total
       'opponentDrops': opponentDrops,
       'opponentAuxiliaryUnits': opponentAuxiliaryUnits ? 1 : 0,
       'attackerPlayerId': attackerPlayerId,

@@ -33,25 +33,29 @@ class GameTemplate extends StatelessWidget {
 
     Widget appBarTitleWidget;
 
-    if (currentPageIndex >= 2 && currentPageIndex <= 6) { // Rounds 1 to 5
-      final currentRoundIndex = currentPageIndex - 2; // 0-indexed round number
-      // Assurez-vous que l'index est valide avant d'accéder au round
-      final currentRound = currentRoundIndex < game.rounds.length ? game.rounds[currentRoundIndex] : null;
+    // Suppression du calcul manuel des scores totaux, car ils sont maintenant disponibles via les getters de l'objet game
+    // int totalMyScore = 0;
+    // int totalOpponentScore = 0;
+    // for (var round in game.rounds) {
+    //   totalMyScore += round.myScore;
+    //   totalOpponentScore += round.opponentScore;
+    // }
 
+    if (currentPageIndex >= 2 && currentPageIndex <= 6) { // Rounds 1 to 5
       appBarTitleWidget = Align( // Aligner le contenu à gauche
         alignment: Alignment.centerLeft,
         child: Row(
           mainAxisSize: MainAxisSize.min, // Occuper l'espace minimal
           children: [
-            if (currentRound != null) // Afficher les scores du round si le round existe
-              Text(
-                '${currentRound.myScore}-${currentRound.opponentScore}',
-                style: const TextStyle(
-                  fontSize: 28, // Taille plus grande pour les scores
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+            // Afficher les scores totaux de la partie en utilisant les nouveaux getters
+            Text(
+              '${game.totalMyScore}-${game.totalOpponentScore}', // MODIFIÉ ICI pour utiliser les getters
+              style: const TextStyle(
+                fontSize: 28, // Taille plus grande pour les scores
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
+            ),
             const SizedBox(width: 8), // Espace entre les scores et les noms
             Text(
               '$myTrigram vs $opponentTrigram',

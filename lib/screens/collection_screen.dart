@@ -7,7 +7,6 @@ import 'package:octominia/models/my_collection_item.dart';
 
 import 'package:octominia/widgets/custom_expansion_panel.dart';
 import 'package:octominia/screens/faction_units_screen.dart';
-import 'dart:math';
 
 class CollectionScreen extends StatefulWidget {
   const CollectionScreen({super.key});
@@ -44,8 +43,10 @@ class _CollectionScreenState extends State<CollectionScreen> with WidgetsBinding
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
+    // ignore: avoid_print
     print('AppLifecycleState changed: $state');
     if (state == AppLifecycleState.resumed) {
+          // ignore: avoid_print
       print('App resumed: Reloading collection data. (via Lifecycle Observer)');
     }
   }
@@ -65,14 +66,12 @@ class _CollectionScreenState extends State<CollectionScreen> with WidgetsBinding
     final Map<int, List<Unit>> unitsByFaction = {};
     for (var unitMap in unitsData) {
       final unit = Unit.fromMap(unitMap);
-      if (unit.factionId != null) {
-        unitsByFaction.putIfAbsent(unit.factionId!, () => []).add(unit);
-      }
+        unitsByFaction.putIfAbsent(unit.factionId, () => []).add(unit);
     }
 
     final Map<int, MyCollectionItem> tempCollectionItemsMap = {
       for (var itemMap in allCollectionItems)
-        MyCollectionItem.fromMap(itemMap).unitId!: MyCollectionItem.fromMap(itemMap)
+        MyCollectionItem.fromMap(itemMap).unitId: MyCollectionItem.fromMap(itemMap)
     };
 
     final Map<int, int> factionToSellQty = {};
@@ -279,6 +278,7 @@ class _CollectionScreenState extends State<CollectionScreen> with WidgetsBinding
                                   ),
                                 );
                                 await _loadCollectionData();
+                                // ignore: avoid_print
                                 print('Retour de FactionUnitsScreen: Données de collection rechargées.');
                               },
                             );

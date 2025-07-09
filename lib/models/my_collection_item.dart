@@ -1,5 +1,4 @@
 // lib/models/my_collection_item.dart
-import 'package:octominia/models/unit.dart'; // Peut être nécessaire pour le contexte
 
 class MyCollectionItem {
   int? id;

@@ -38,7 +38,7 @@ class _FactionUnitsScreenState extends State<FactionUnitsScreen> {
     for (var itemMap in allCollectionItemsMaps) {
       // Correction: Convertit chaque Map en MyCollectionItem avant de l'ajouter à la map
       final item = MyCollectionItem.fromMap(itemMap);
-      tempMap[item.unitId!] = item;
+      tempMap[item.unitId] = item;
     }
 
     setState(() {
@@ -59,7 +59,7 @@ class _FactionUnitsScreenState extends State<FactionUnitsScreen> {
       await _dbHelper.updateMyCollectionItem(updatedItem.toMap());
     }
     // Met à jour la map locale.
-    _myCollectionItemsMap[updatedItem.unitId!] = updatedItem;
+    _myCollectionItemsMap[updatedItem.unitId] = updatedItem;
   }
 
   @override

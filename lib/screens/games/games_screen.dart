@@ -124,7 +124,7 @@ class _GamesScreenState extends State<GamesScreen> {
           opponentAuxiliaryUnits: false,
           rounds: [],
           notes: 'Partie en cours, bon début.',
-          scoreOutOf20: 0, // Score /20 is 0 if not completed
+          scoreOutOf20: 0, // Score /20 is 0 if not completed (sera ignoré avec la modification)
           gameState: GameState.round3, // Example of in-progress state
         ),
       ];
@@ -206,6 +206,9 @@ class _GamesScreenState extends State<GamesScreen> {
                     final String opponentScoreText = game.opponentScore.toString();
                     final Color resultColor = _getResultColor(game.result); // game.result is now GameResult enum
                     final String formattedResult = game.result.displayTitle.toUpperCase(); // Direct use of displayTitle
+
+                    // NOUVEAU: Calculer le score sur 20 à la volée en utilisant les scores totaux des rounds
+                    final int displayScoreOutOf20 = Game.calculateScoreOutOf20(game.totalMyScore, game.totalOpponentScore);
 
                     developer.log(
                       'DEBUG: Partie ${game.myPlayerName} vs ${game.opponentPlayerName}: result="${game.result.name}", formattedResult="$formattedResult", resultColor=$resultColor',
@@ -313,7 +316,8 @@ class _GamesScreenState extends State<GamesScreen> {
                                           crossAxisAlignment: CrossAxisAlignment.center,
                                           children: [
                                             Text(
-                                              '${game.scoreOutOf20}/20',
+                                              // Utilise displayScoreOutOf20 qui est calculé dynamiquement
+                                              '${displayScoreOutOf20}/20', // MODIFIÉ ICI
                                               style: TextStyle(
                                                 fontSize: 24.0,
                                                 fontWeight: FontWeight.bold,

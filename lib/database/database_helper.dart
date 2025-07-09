@@ -154,12 +154,10 @@ class DatabaseHelper {
 
   }
 
-  @override
   Future<void> _onCreate(Database db, int version) async {
     await _createAllTables(db);
   }
 
-  @override
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       print('Migrating DB from version $oldVersion to 2');
