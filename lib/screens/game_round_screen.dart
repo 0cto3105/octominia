@@ -898,28 +898,6 @@ class _GameRoundScreenState extends State<GameRoundScreen> {
 
               ...orderedPlayerCards,
               const SizedBox(height: 20),
-              Center(
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Vérifiez si tous les champs essentiels sont remplis avant de passer au round suivant
-                    if (_currentRound.priorityPlayerId != null && _currentRound.initiativePlayerId != null) {
-                      widget.onUpdateRound(_currentRound);
-                      // Pas de navigation ici, car le widget parent gère la navigation
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Veuillez définir l\'initiative et la priorité du tour.')),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal, // Couleur du bouton "Valider le Round"
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                    textStyle: const TextStyle(fontSize: 18),
-                  ),
-                  child: const Text('Valider le Round'),
-                ),
-              ),
             ],
           ),
         ),

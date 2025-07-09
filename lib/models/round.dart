@@ -40,9 +40,9 @@ class Round {
     this.myPlayerDidNonFreeDoubleTurn = false,
     this.opponentPlayerDidNonFreeDoubleTurn = false,
   }) : myQuestsSuite1 = myQuestsSuite1 ?? _createInitialQuests(isMyPlayer: true, suiteNumber: 1),
-        myQuestsSuite2 = myQuestsSuite2 ?? _createInitialQuests(isMyPlayer: true, suiteNumber: 2),
-        opponentQuestsSuite1 = opponentQuestsSuite1 ?? _createInitialQuests(isMyPlayer: false, suiteNumber: 1),
-        opponentQuestsSuite2 = opponentQuestsSuite2 ?? _createInitialQuests(isMyPlayer: false, suiteNumber: 2);
+       myQuestsSuite2 = myQuestsSuite2 ?? _createInitialQuests(isMyPlayer: true, suiteNumber: 2),
+       opponentQuestsSuite1 = opponentQuestsSuite1 ?? _createInitialQuests(isMyPlayer: false, suiteNumber: 1),
+       opponentQuestsSuite2 = opponentQuestsSuite2 ?? _createInitialQuests(isMyPlayer: false, suiteNumber: 2);
 
   // Helper pour créer les quêtes initiales avec la première débloquée
   static List<Quest> _createInitialQuests({required bool isMyPlayer, required int suiteNumber}) {
@@ -181,17 +181,18 @@ class Round {
     return null; // Pas d'underdog si les scores sont égaux
   }
 
-  Map<String, dynamic> toJson() { // Renamed from toMap() to toJson()
+  Map<String, dynamic> toJson() {
     return {
       'roundNumber': roundNumber,
       'myScore': myScore,
       'opponentScore': opponentScore,
       'priorityPlayerId': priorityPlayerId,
       'initiativePlayerId': initiativePlayerId,
-      'myQuestsSuite1': myQuestsSuite1.map((q) => q.toMap()).toList(), // Assuming Quest has toMap()
-      'myQuestsSuite2': myQuestsSuite2.map((q) => q.toMap()).toList(), // Assuming Quest has toMap()
-      'opponentQuestsSuite1': opponentQuestsSuite1.map((q) => q.toMap()).toList(), // Assuming Quest has toMap()
-      'opponentQuestsSuite2': opponentQuestsSuite2.map((q) => q.toMap()).toList(), // Assuming Quest has toMap()
+      // Utilisation de toJson() pour Quest
+      'myQuestsSuite1': myQuestsSuite1.map((q) => q.toJson()).toList(),
+      'myQuestsSuite2': myQuestsSuite2.map((q) => q.toJson()).toList(),
+      'opponentQuestsSuite1': opponentQuestsSuite1.map((q) => q.toJson()).toList(),
+      'opponentQuestsSuite2': opponentQuestsSuite2.map((q) => q.toJson()).toList(),
       // Sérialisation des nouvelles propriétés
       'underdogPlayerIdAtEndOfRound': underdogPlayerIdAtEndOfRound,
       'myPlayerHadDoubleFreeTurn': myPlayerHadDoubleFreeTurn,
@@ -208,21 +209,22 @@ class Round {
       opponentScore: map['opponentScore'] as int? ?? 0,
       priorityPlayerId: map['priorityPlayerId'] as String?,
       initiativePlayerId: map['initiativePlayerId'] as String?,
+      // Utilisation de fromJson() pour Quest
       myQuestsSuite1: (map['myQuestsSuite1'] as List<dynamic>?)
-              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>)) // Assuming Quest has fromMap()
-              .toList() ??
+            ?.map((e) => Quest.fromJson(e as Map<String, dynamic>))
+            .toList() ??
           _createInitialQuests(isMyPlayer: true, suiteNumber: 1),
       myQuestsSuite2: (map['myQuestsSuite2'] as List<dynamic>?)
-              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>)) // Assuming Quest has fromMap()
-              .toList() ??
+            ?.map((e) => Quest.fromJson(e as Map<String, dynamic>))
+            .toList() ??
           _createInitialQuests(isMyPlayer: true, suiteNumber: 2),
       opponentQuestsSuite1: (map['opponentQuestsSuite1'] as List<dynamic>?)
-              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>)) // Assuming Quest has fromMap()
-              .toList() ??
+            ?.map((e) => Quest.fromJson(e as Map<String, dynamic>))
+            .toList() ??
           _createInitialQuests(isMyPlayer: false, suiteNumber: 1),
       opponentQuestsSuite2: (map['opponentQuestsSuite2'] as List<dynamic>?)
-              ?.map((e) => Quest.fromMap(e as Map<String, dynamic>)) // Assuming Quest has fromMap()
-              .toList() ??
+            ?.map((e) => Quest.fromJson(e as Map<String, dynamic>))
+            .toList() ??
           _createInitialQuests(isMyPlayer: false, suiteNumber: 2),
       // Désérialisation des nouvelles propriétés
       underdogPlayerIdAtEndOfRound: map['underdogPlayerIdAtEndOfRound'] as String?,

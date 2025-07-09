@@ -63,7 +63,8 @@ class _AddGameScreenState extends State<AddGameScreen> {
           priorityPlayerId: null,
         ),
       ),
-      // MODIFICATION: 'result' n'est plus un paramètre du constructeur Game. Il est maintenant un getter.
+      attackerPlayerId: 'me',
+      priorityPlayerIdRound1: 'me',
       scoreOutOf20: 0,
       gameState: GameState.setup,
     );
@@ -229,8 +230,6 @@ class _AddGameScreenState extends State<AddGameScreen> {
     } else if (_currentPageIndex == 7) {
       // On the summary screen, the "Finaliser la Partie" button (which is _nextPage)
       setState(() {
-        // MODIFICATION: 'result' n'est plus défini ici, car c'est un getter de la classe Game.
-        // Il est calculé automatiquement lorsque gameState est GameState.completed.
         _newGame = _newGame.copyWith(
           scoreOutOf20: Game.calculateScoreOutOf20(_newGame.myScore, _newGame.opponentScore),
           gameState: GameState.completed, // Mark as completed
@@ -272,31 +271,56 @@ class _AddGameScreenState extends State<AddGameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    String appBarTitle;
-    // Get trigrams for score display in AppBar
     String myTrigram = _newGame.myPlayerName.length >= 3 ? _newGame.myPlayerName.substring(0, 3).toUpperCase() : _newGame.myPlayerName.toUpperCase();
     String opponentTrigram = _newGame.opponentPlayerName.length >= 3 ? _newGame.opponentPlayerName.substring(0, 3).toUpperCase() : _newGame.opponentPlayerName.toUpperCase();
 
-    // Determine the title based on the current page, or the score if it's a round page
+    Widget appBarTitleWidget;
+
     if (_currentPageIndex >= 2 && _currentPageIndex <= 6) { // Rounds 1 to 5
-      appBarTitle = '$myTrigram ${_newGame.myScore} - $opponentTrigram ${_newGame.opponentScore}';
+      final currentRoundIndex = _currentPageIndex - 2; // 0-indexed round number
+      final currentRound = _newGame.rounds[currentRoundIndex];
+      appBarTitleWidget = Align( // Aligner le contenu à gauche
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min, // Occuper l'espace minimal
+          children: [
+            Text(
+              '${currentRound.myScore}-${currentRound.opponentScore}',
+              style: const TextStyle(
+                fontSize: 28, // Taille plus grande pour les scores
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 8), // Espace entre les scores et les noms
+            Text(
+              '$myTrigram vs $opponentTrigram',
+              style: const TextStyle(
+                fontSize: 16, // Taille plus petite pour les noms
+                color: Colors.white70,
+              ),
+            ),
+          ],
+        ),
+      );
     } else {
+      String titleText;
       switch (_currentPageIndex) {
         case 0:
-          appBarTitle = 'Configuration de la Partie';
+          titleText = 'Configuration de la Partie';
           break;
         case 1:
-          appBarTitle = 'Jet de Dés & Priorité';
+          titleText = 'Jet de Dés & Priorité';
           break;
         case 7:
-          appBarTitle = 'Résumé de la Partie';
+          titleText = 'Résumé de la Partie';
           break;
         default:
-          appBarTitle = 'Partie';
+          titleText = 'Partie';
           break;
       }
+      appBarTitleWidget = Text(titleText); // Pour les autres écrans, un simple Text
     }
-
 
     return PopScope(
       canPop: _currentPageIndex == 0,
@@ -307,9 +331,9 @@ class _AddGameScreenState extends State<AddGameScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(appBarTitle),
-          backgroundColor: Colors.redAccent, // <-- L'en-tête rouge
-          centerTitle: true, // Centrer le titre/score
+          title: appBarTitleWidget, // Utilisation du Widget personnalisé
+          backgroundColor: Colors.redAccent,
+          centerTitle: false, // Ne pas centrer le titre pour permettre l'alignement à gauche
           actions: [
             IconButton(
               icon: const Icon(Icons.close),
@@ -323,7 +347,7 @@ class _AddGameScreenState extends State<AddGameScreen> {
             Expanded(
               child: PageView(
                 controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(), // Disable swiping
+                physics: const NeverScrollableScrollPhysics(),
                 onPageChanged: (index) {
                   setState(() {
                     _currentPageIndex = index;
@@ -365,7 +389,7 @@ class _AddGameScreenState extends State<AddGameScreen> {
                   ),
                   GameSummaryScreen(
                     game: _newGame,
-                    onSave: _nextPage, // This will now trigger the 'Finaliser la Partie' logic
+                    onSave: _nextPage,
                   ),
                 ],
               ),
@@ -376,21 +400,38 @@ class _AddGameScreenState extends State<AddGameScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    ElevatedButton(
-                      onPressed: _previousPage,
-                      style: ElevatedButton.styleFrom( // <-- Style pour le bouton "Précédent"
-                        backgroundColor: Colors.redAccent,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Précédent'),
+                    Row( // Nouveau Row pour le bouton Précédent et le texte du tour
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _previousPage,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                          ),
+                          icon: const Icon(Icons.arrow_back),
+                          label: const Text(''), // Étiquette vide pour le bouton
+                        ),
+                        if (_currentPageIndex >= 2 && _currentPageIndex <= 6) // Afficher "Tour X" seulement pour les rounds
+                          Padding(
+                            padding: const EdgeInsets.only(left: 20.0), // Espacement entre le bouton et le texte
+                            child: Text(
+                              'Tour ${_currentPageIndex - 1}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white, // Couleur du texte
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     ElevatedButton(
                       onPressed: _nextPage,
-                      style: ElevatedButton.styleFrom( // <-- Style pour le bouton "Suivant" / "Finaliser la Partie"
+                      style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.redAccent,
                         foregroundColor: Colors.white,
                       ),
-                      child: Text(_currentPageIndex == 7 ? 'Finaliser la Partie' : 'Suivant'), // Updated button text for summary screen
+                      child: Text(_currentPageIndex == 7 ? 'Finaliser la Partie' : 'Suivant'),
                     ),
                   ],
                 ),
