@@ -137,6 +137,7 @@ class _AddGameScreenState extends State<AddGameScreen> {
   void _updateGameData(Game updatedGame) {
     setState(() {
       _newGame = updatedGame;
+      // Recalcul des scores totaux du jeu après chaque mise à jour de données
       int myTotalScore = 0;
       int opponentTotalScore = 0;
       for (var round in _newGame.rounds) {
@@ -160,6 +161,7 @@ class _AddGameScreenState extends State<AddGameScreen> {
       if (index != -1) {
         updatedRounds[index] = updatedRound;
         _newGame = _newGame.copyWith(rounds: updatedRounds);
+        // Recalcul des scores totaux du jeu après chaque mise à jour de round
         int myTotalScore = 0;
         int opponentTotalScore = 0;
         for (var round in _newGame.rounds) {
@@ -286,35 +288,30 @@ class _AddGameScreenState extends State<AddGameScreen> {
   @override
   Widget build(BuildContext context) {
     String appBarTitle;
-    switch (_currentPageIndex) {
-      case 0:
-        appBarTitle = 'Configuration de la Partie';
-        break;
-      case 1:
-        appBarTitle = 'Jet de Dés & Priorité';
-        break;
-      case 2:
-        appBarTitle = 'Tour 1';
-        break;
-      case 3:
-        appBarTitle = 'Tour 2';
-        break;
-      case 4:
-        appBarTitle = 'Tour 3';
-        break;
-      case 5:
-        appBarTitle = 'Tour 4';
-        break;
-      case 6:
-        appBarTitle = 'Tour 5';
-        break;
-      case 7:
-        appBarTitle = 'Résumé de la Partie';
-        break;
-      default:
-        appBarTitle = 'Partie';
-        break;
+    // Get trigrams for score display in AppBar
+    String myTrigram = _newGame.myPlayerName.length >= 3 ? _newGame.myPlayerName.substring(0, 3).toUpperCase() : _newGame.myPlayerName.toUpperCase();
+    String opponentTrigram = _newGame.opponentPlayerName.length >= 3 ? _newGame.opponentPlayerName.substring(0, 3).toUpperCase() : _newGame.opponentPlayerName.toUpperCase();
+
+    // Determine the title based on the current page, or the score if it's a round page
+    if (_currentPageIndex >= 2 && _currentPageIndex <= 6) { // Rounds 1 to 5
+      appBarTitle = '$myTrigram ${_newGame.myScore} - $opponentTrigram ${_newGame.opponentScore}';
+    } else {
+      switch (_currentPageIndex) {
+        case 0:
+          appBarTitle = 'Configuration de la Partie';
+          break;
+        case 1:
+          appBarTitle = 'Jet de Dés & Priorité';
+          break;
+        case 7:
+          appBarTitle = 'Résumé de la Partie';
+          break;
+        default:
+          appBarTitle = 'Partie';
+          break;
+      }
     }
+
 
     return PopScope(
       canPop: _currentPageIndex == 0,
@@ -327,6 +324,7 @@ class _AddGameScreenState extends State<AddGameScreen> {
         appBar: AppBar(
           title: Text(appBarTitle),
           backgroundColor: Colors.redAccent, // <-- L'en-tête rouge
+          centerTitle: true, // Centrer le titre/score
           actions: [
             IconButton(
               icon: const Icon(Icons.close),
