@@ -1,5 +1,7 @@
 // lib/screens/games/game_center.dart
 
+import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:octominia/models/game.dart';
@@ -49,7 +51,6 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
     _gameHasBeenSavedOnce = widget.initialGame != null;
 
     if (widget.initialGame != null) {
-        // CORRECTION : On appelle la méthode maintenant publique
         _game = _game.recalculateStateFromRound(1);
     }
     
@@ -75,26 +76,28 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
 
   @override
   void dispose() {
+    _saveGame();
     _pageController.dispose();
     super.dispose();
   }
 
-  void _updateAndSaveGame(Game updatedGame) {
+  void _updateGameInMemory(Game updatedGame) {
     setState(() {
       _game = updatedGame;
     });
-    _saveGame();
   }
 
   Future<void> _saveGame() async {
     try {
+      final finalGameState = _game.recalculateStateFromRound(1);
+      
       if (!_gameHasBeenSavedOnce) {
-        await _gameStorage.addGame(_game);
+        await _gameStorage.addGame(finalGameState);
         _gameHasBeenSavedOnce = true;
       } else {
-        await _gameStorage.updateGame(_game);
+        await _gameStorage.updateGame(finalGameState);
       }
-      widget.onGameSaved(_game);
+      widget.onGameSaved(finalGameState);
     } catch (e) {
       if(mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -115,6 +118,8 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
   void _nextPage() {
     int currentPageIndex = _pageController.page!.round();
     if (currentPageIndex < 7) {
+      final recalculatedGame = _game.recalculateStateFromRound(1);
+      _updateGameInMemory(recalculatedGame);
       _goToPage(currentPageIndex + 1);
     }
   }
@@ -122,6 +127,8 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
   void _previousPage() {
     int currentPageIndex = _pageController.page!.round();
     if (currentPageIndex > 0) {
+      final recalculatedGame = _game.recalculateStateFromRound(1);
+      _updateGameInMemory(recalculatedGame);
       _goToPage(currentPageIndex - 1);
     } else {
       Navigator.of(context).pop();
@@ -143,39 +150,62 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
       pages: [
         GameSetupScreen(
           game: _game,
-          onUpdate: (updatedGame) => _updateAndSaveGame(updatedGame),
+          onUpdate: (updatedGame) => _updateGameInMemory(updatedGame),
         ),
         GameRollOffsScreen(
           game: _game,
-          onUpdate: (updatedGame) => _updateAndSaveGame(updatedGame),
+          onUpdate: (updatedGame) {
+            final newGame = updatedGame.recalculateStateFromRound(1);
+            _updateGameInMemory(newGame);
+          }
         ),
         for (int i = 1; i <= 5; i++)
           GameRoundScreen(
             roundNumber: i,
             game: _game,
             onUpdateRound: (roundNumber, {myScore, opponentScore, priorityPlayerId, initiativePlayerId}) {
-              final newGame = _game.updateRound(
-                roundNumber,
-                myScore: myScore,
-                opponentScore: opponentScore,
-                priorityPlayerId: priorityPlayerId,
-                initiativePlayerId: initiativePlayerId,
-              );
-              _updateAndSaveGame(newGame);
+              Game newGame;
+              if (priorityPlayerId != null || initiativePlayerId != null) {
+                if (kDebugMode) {
+                  print("--- [Game Center] AVANT recalcul (changement de priorité/init) ---");
+                  print("Jeu actuel: permanentUnderdog='${_game.permanentUnderdogPlayerId}'");
+                }
+                newGame = _game.updateRoundAndRecalculate(
+                  roundNumber,
+                  priorityPlayerId: priorityPlayerId,
+                  initiativePlayerId: initiativePlayerId,
+                );
+                if (kDebugMode) {
+                  print("--- [Game Center] APRES recalcul ---");
+                  print("Nouveau jeu: permanentUnderdog='${newGame.permanentUnderdogPlayerId}'");
+                  print("Nouveau Round $roundNumber: underdog='${newGame.rounds[roundNumber-1].underdogPlayerIdForRound}'");
+                }
+              } else {
+                newGame = _game.setPrimaryScore(
+                  roundNumber: roundNumber,
+                  score: (myScore ?? opponentScore)!,
+                  isMyPlayer: myScore != null,
+                );
+              }
+              _updateGameInMemory(newGame);
             },
             onToggleQuest: (roundNumber, suiteIndex, questIndex, isMyPlayer) {
               final newGame = _game.toggleQuest(roundNumber, suiteIndex, questIndex, isMyPlayer);
-              _updateAndSaveGame(newGame);
+              _updateGameInMemory(newGame);
             },
           ),
         GameSummaryScreen(
           game: _game,
           onSave: () {
+            final finalScores = _game.getFinalScoresOutOf20();
+            final int scoreToSave = max(finalScores['myFinalScore']!, finalScores['opponentFinalScore']!);
+
             final finalGame = _game.copyWith(
               gameState: GameState.completed,
-              scoreOutOf20: Game.calculateScoreOutOf20(_game)
+              scoreOutOf20: scoreToSave,
             );
-            _updateAndSaveGame(finalGame);
+            
+            _updateGameInMemory(finalGame);
             Navigator.of(context).pop();
           },
         ),

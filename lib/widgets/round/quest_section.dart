@@ -6,10 +6,8 @@ import 'package:octominia/models/quest.dart';
 import 'package:octominia/widgets/round/quest_checkbox.dart';
 
 class QuestSection extends StatelessWidget {
-  // NOUVEAU : Constructeur simplifié
   final bool isMyPlayer;
   final Round currentRound;
-  // Le callback est maintenant beaucoup plus simple !
   final Function(int suiteIndex, int questIndex) onUpdateQuest;
 
   const QuestSection({
@@ -21,11 +19,13 @@ class QuestSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TOUTE LA LOGIQUE A ÉTÉ RETIRÉE. Le widget ne fait qu'afficher.
-
     final questSuites = isMyPlayer
         ? [currentRound.myQuestsSuite1, currentRound.myQuestsSuite2]
         : [currentRound.opponentQuestsSuite1, currentRound.opponentQuestsSuite2];
+
+    final suite1CompletedThisRound = isMyPlayer ? currentRound.myQuestSuite1CompletedThisRound : currentRound.opponentQuestSuite1CompletedThisRound;
+    final suite2CompletedThisRound = isMyPlayer ? currentRound.myQuestSuite2CompletedThisRound : currentRound.opponentQuestSuite2CompletedThisRound;
+    final suitesCompletedThisRound = [suite1CompletedThisRound, suite2CompletedThisRound];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,22 +43,32 @@ class QuestSection extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Boucle pour générer les deux suites de quêtes
             for (int suiteIndex = 0; suiteIndex < questSuites.length; suiteIndex++)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: List.generate(questSuites[suiteIndex].length, (questIndex) {
                     final quest = questSuites[suiteIndex][questIndex];
-                    // La logique pour savoir si une quête est activée est maintenant très simple :
-                    // elle est active si son statut n'est pas "locked".
-                    // Le moteur "game.dart" a déjà fait tout le travail de calcul.
+                    final bool suiteCompletedThisRound = suitesCompletedThisRound[suiteIndex];
+
+                    // CORRECTION: Logique pour pouvoir décocher une quête
+                    // Une quête est pré-complétée (grisée) si elle est faite, mais pas ce tour-ci
+                    final bool isPreCompleted = quest.status == QuestStatus.completed && !suiteCompletedThisRound;
+                    
+                    // Une quête est interactive si :
+                    // 1. Elle est débloquée et aucune autre de la suite n'a été faite ce tour-ci
+                    final bool canBeCompleted = quest.status == QuestStatus.unlocked && !suiteCompletedThisRound;
+                    // 2. OU si c'est ELLE qui a été complétée ce tour-ci (permet de la décocher)
+                    final bool canBeUncompleted = quest.status == QuestStatus.completed && suiteCompletedThisRound;
+                    
+                    final bool isEnabled = canBeCompleted || canBeUncompleted;
+
                     return QuestCheckbox(
                       label: '${suiteIndex + 1} - ${quest.name}',
                       value: quest.status == QuestStatus.completed,
-                      isEnabled: quest.status != QuestStatus.locked,
+                      isEnabled: isEnabled,
+                      isPreCompleted: isPreCompleted,
                       onChanged: (newValue) {
-                        // Le callback est simple, il passe juste les index.
                         onUpdateQuest(suiteIndex + 1, questIndex);
                       },
                     );

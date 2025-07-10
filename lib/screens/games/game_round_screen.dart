@@ -22,7 +22,6 @@ class GameRoundScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentRound = game.rounds.firstWhere((r) => r.roundNumber == roundNumber);
 
-    // CORRECTION : On passe les nouveaux drapeaux au widget
     final myPlayerCard = PlayerScoreCard(
       playerName: game.myPlayerName,
       currentRound: currentRound,
@@ -48,8 +47,11 @@ class GameRoundScreen extends StatelessWidget {
       onUpdatePrimaryScore: (newScore) => onUpdateRound(roundNumber, opponentScore: newScore),
       onUpdateQuest: (suiteIndex, questIndex) => onToggleQuest(roundNumber, suiteIndex, questIndex, false),
     );
+    
+    // La priorité est déterminée par la valeur du round en cours.
+    final priorityPlayerThisRound = currentRound.priorityPlayerId;
 
-    final orderedPlayerCards = currentRound.priorityPlayerId == 'me'
+    final orderedPlayerCards = priorityPlayerThisRound == 'me'
       ? [myPlayerCard, opponentPlayerCard]
       : [opponentPlayerCard, myPlayerCard];
 
@@ -60,17 +62,20 @@ class GameRoundScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildControlRow(
-                context: context,
-                label: 'Initiative',
-                selectedValue: currentRound.initiativePlayerId,
-                onChanged: (value) => onUpdateRound(roundNumber, initiativePlayerId: value),
-              ),
-              const SizedBox(height: 10),
+              if (roundNumber > 1)
+                _buildControlRow(
+                  context: context,
+                  label: 'Initiative',
+                  selectedValue: currentRound.initiativePlayerId,
+                  onChanged: (value) => onUpdateRound(roundNumber, initiativePlayerId: value),
+                ),
+              if (roundNumber > 1) const SizedBox(height: 10),
+
               _buildControlRow(
                 context: context,
                 label: 'Priorité',
-                selectedValue: currentRound.priorityPlayerId,
+                selectedValue: priorityPlayerThisRound,
+                // CORRECTION: L'utilisateur peut maintenant changer la priorité à chaque tour, y compris le T1
                 onChanged: (value) => onUpdateRound(roundNumber, priorityPlayerId: value),
               ),
               const SizedBox(height: 20),
@@ -102,7 +107,7 @@ class GameRoundScreen extends StatelessWidget {
     required String playerKey,
     required String playerName,
     required bool isSelected,
-    required Function(String) onSelect,
+    required Function(String?) onSelect,
   }) {
     String trigram = playerName.length >= 3 ? playerName.substring(0, 3).toUpperCase() : playerName.toUpperCase();
     return Expanded(

@@ -1,12 +1,15 @@
 // lib/models/round.dart
 import 'package:octominia/models/quest.dart';
 
+// Création d'un objet unique pour servir de "sentinelle" dans copyWith
+const _sentinel = Object();
+
 class Round {
   final int roundNumber;
   final int myScore;
   final int opponentScore;
-  final String priorityPlayerId;      // CORRECTION: Retiré '?' pour imposer une valeur
-  final String initiativePlayerId;    // CORRECTION: Retiré '?' pour imposer une valeur
+  final String? priorityPlayerId;
+  final String? initiativePlayerId;
 
   final List<Quest> myQuestsSuite1;
   final List<Quest> myQuestsSuite2;
@@ -26,13 +29,12 @@ class Round {
   final bool myPlayerTookPenalizedDoubleTurn;
   final bool opponentPlayerTookPenalizedDoubleTurn;
 
-  // CORRECTION : Ajout de valeurs par défaut dans le constructeur
   Round({
     required this.roundNumber,
     this.myScore = 0,
     this.opponentScore = 0,
-    String? priorityPlayerId,
-    String? initiativePlayerId,
+    this.priorityPlayerId,
+    this.initiativePlayerId,
     required this.myQuestsSuite1,
     required this.myQuestsSuite2,
     required this.opponentQuestsSuite1,
@@ -48,16 +50,15 @@ class Round {
     this.opponentPlayerTookDoubleTurn = false,
     this.myPlayerTookPenalizedDoubleTurn = false,
     this.opponentPlayerTookPenalizedDoubleTurn = false,
-  })  : this.priorityPlayerId = priorityPlayerId ?? 'me', // Valeur par défaut si null
-        this.initiativePlayerId = initiativePlayerId ?? 'me'; // Valeur par défaut si null
+  });
 
   factory Round.fromJson(Map<String, dynamic> map) {
     return Round(
       roundNumber: map['roundNumber'] as int,
       myScore: map['myScore'] as int,
       opponentScore: map['opponentScore'] as int,
-      priorityPlayerId: map['priorityPlayerId'] as String?, // Garder '?' pour la rétrocompatibilité des sauvegardes
-      initiativePlayerId: map['initiativePlayerId'] as String?, // Garder '?' pour la rétrocompatibilité
+      priorityPlayerId: map['priorityPlayerId'] as String?,
+      initiativePlayerId: map['initiativePlayerId'] as String?,
       myQuestsSuite1: (map['myQuestsSuite1'] as List<dynamic>)
           .map((e) => Quest.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -123,7 +124,8 @@ class Round {
     bool? myQuestSuite2CompletedThisRound,
     bool? opponentQuestSuite1CompletedThisRound,
     bool? opponentQuestSuite2CompletedThisRound,
-    String? underdogPlayerIdForRound,
+    // CORRECTION CRITIQUE : On utilise la sentinelle pour différencier 'null' de 'non fourni'.
+    dynamic underdogPlayerIdForRound = _sentinel,
     bool? myPlayerIsEligibleForFreeDoubleTurn,
     bool? opponentPlayerIsEligibleForFreeDoubleTurn,
     bool? myPlayerTookDoubleTurn,
@@ -145,7 +147,10 @@ class Round {
       myQuestSuite2CompletedThisRound: myQuestSuite2CompletedThisRound ?? this.myQuestSuite2CompletedThisRound,
       opponentQuestSuite1CompletedThisRound: opponentQuestSuite1CompletedThisRound ?? this.opponentQuestSuite1CompletedThisRound,
       opponentQuestSuite2CompletedThisRound: opponentQuestSuite2CompletedThisRound ?? this.opponentQuestSuite2CompletedThisRound,
-      underdogPlayerIdForRound: underdogPlayerIdForRound ?? this.underdogPlayerIdForRound,
+      // CORRECTION CRITIQUE : Logique pour accepter 'null' comme une nouvelle valeur.
+      underdogPlayerIdForRound: underdogPlayerIdForRound == _sentinel
+          ? this.underdogPlayerIdForRound
+          : underdogPlayerIdForRound as String?,
       myPlayerIsEligibleForFreeDoubleTurn: myPlayerIsEligibleForFreeDoubleTurn ?? this.myPlayerIsEligibleForFreeDoubleTurn,
       opponentPlayerIsEligibleForFreeDoubleTurn: opponentPlayerIsEligibleForFreeDoubleTurn ?? this.opponentPlayerIsEligibleForFreeDoubleTurn,
       myPlayerTookDoubleTurn: myPlayerTookDoubleTurn ?? this.myPlayerTookDoubleTurn,

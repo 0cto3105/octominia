@@ -1,4 +1,5 @@
 // lib/models/game.dart
+import 'package:flutter/foundation.dart';
 import 'package:octominia/models/round.dart';
 import 'package:octominia/models/quest.dart';
 import 'package:uuid/uuid.dart';
@@ -33,8 +34,8 @@ class Game {
   final String? opponentFactionImageUrl;
   final int opponentDrops;
   final bool opponentAuxiliaryUnits;
-  final String attackerPlayerId;
-  final String priorityPlayerIdRound1;
+  final String? attackerPlayerId;
+  final String? priorityPlayerIdRound1;
   final List<Round> rounds;
   final int scoreOutOf20;
   final String? notes;
@@ -54,16 +55,14 @@ class Game {
     this.opponentFactionImageUrl,
     required this.opponentDrops,
     required this.opponentAuxiliaryUnits,
-    String? attackerPlayerId,
-    String? priorityPlayerIdRound1,
+    this.attackerPlayerId,
+    this.priorityPlayerIdRound1,
     List<Round>? rounds,
     int? scoreOutOf20,
     this.notes,
     GameState? gameState,
     this.permanentUnderdogPlayerId,
   })  : this.id = id ?? const Uuid().v4(),
-        this.attackerPlayerId = attackerPlayerId ?? 'me',
-        this.priorityPlayerIdRound1 = priorityPlayerIdRound1 ?? 'me',
         this.rounds = rounds ?? _initializeRounds(),
         this.scoreOutOf20 = scoreOutOf20 ?? 0,
         this.gameState = gameState ?? GameState.setup;
@@ -76,23 +75,23 @@ class Game {
   }
 
   int get totalMyScore {
-    final primaryScore = rounds.fold(0, (sum, round) => sum + round.myScore);
-    if (rounds.isEmpty) return primaryScore;
+    final int primaryScoreSum = rounds.fold(0, (sum, round) => sum + round.myScore);
+    if (rounds.isEmpty) return primaryScoreSum;
     final lastRound = rounds.last;
-    final questScore =
+    final int questScore =
         (lastRound.myQuestsSuite1.where((q) => q.status == QuestStatus.completed).length * 5) +
         (lastRound.myQuestsSuite2.where((q) => q.status == QuestStatus.completed).length * 5);
-    return primaryScore + questScore;
+    return primaryScoreSum + questScore;
   }
 
   int get totalOpponentScore {
-    final primaryScore = rounds.fold(0, (sum, round) => sum + round.opponentScore);
-    if (rounds.isEmpty) return primaryScore;
+    final int primaryScoreSum = rounds.fold(0, (sum, round) => sum + round.opponentScore);
+    if (rounds.isEmpty) return primaryScoreSum;
     final lastRound = rounds.last;
-    final questScore =
+    final int questScore =
         (lastRound.opponentQuestsSuite1.where((q) => q.status == QuestStatus.completed).length * 5) +
         (lastRound.opponentQuestsSuite2.where((q) => q.status == QuestStatus.completed).length * 5);
-    return primaryScore + questScore;
+    return primaryScoreSum + questScore;
   }
 
   Game updatePlayerInfo({
@@ -100,21 +99,43 @@ class Game {
     String? opponentPlayerName, String? opponentFactionName, String? opponentFactionImageUrl, int? opponentDrops, bool? opponentAuxiliaryUnits,
     String? attackerPlayerId, String? priorityPlayerIdRound1,
   }) {
-    return copyWith(
+    Game newGame = copyWith(
       myPlayerName: myPlayerName, myFactionName: myFactionName, myFactionImageUrl: myFactionImageUrl, myDrops: myDrops, myAuxiliaryUnits: myAuxiliaryUnits,
       opponentPlayerName: opponentPlayerName, opponentFactionName: opponentFactionName, opponentFactionImageUrl: opponentFactionImageUrl, opponentDrops: opponentDrops, opponentAuxiliaryUnits: opponentAuxiliaryUnits,
       attackerPlayerId: attackerPlayerId, priorityPlayerIdRound1: priorityPlayerIdRound1,
-    ).recalculateStateFromRound(1);
+    );
+    if (newGame.rounds.isNotEmpty && priorityPlayerIdRound1 != null) {
+      newGame.rounds[0] = newGame.rounds[0].copyWith(priorityPlayerId: priorityPlayerIdRound1);
+    }
+    return newGame.recalculateStateFromRound(1);
   }
 
-  Game updateRound(int roundNumber, {int? myScore, int? opponentScore, String? priorityPlayerId, String? initiativePlayerId}) {
+  Game updateRoundAndRecalculate(int roundNumber, {String? priorityPlayerId, String? initiativePlayerId}) {
     if (roundNumber < 1 || roundNumber > rounds.length) return this;
     List<Round> newRounds = List.from(rounds);
     int roundIndex = roundNumber - 1;
+
     newRounds[roundIndex] = newRounds[roundIndex].copyWith(
-      myScore: myScore, opponentScore: opponentScore, priorityPlayerId: priorityPlayerId, initiativePlayerId: initiativePlayerId,
+      priorityPlayerId: priorityPlayerId,
+      initiativePlayerId: initiativePlayerId,
     );
-    return copyWith(rounds: newRounds).recalculateStateFromRound(roundNumber);
+    
+    String? newPriorityT1 = (roundNumber == 1) ? priorityPlayerId : this.priorityPlayerIdRound1;
+
+    return copyWith(rounds: newRounds, priorityPlayerIdRound1: newPriorityT1).recalculateStateFromRound(roundNumber);
+  }
+
+  Game setPrimaryScore({required int roundNumber, required int score, required bool isMyPlayer}) {
+    if (roundNumber < 1 || roundNumber > rounds.length) return this;
+    List<Round> newRounds = List.from(rounds);
+    int roundIndex = roundNumber - 1;
+
+    newRounds[roundIndex] = newRounds[roundIndex].copyWith(
+      myScore: isMyPlayer ? score : null,
+      opponentScore: !isMyPlayer ? score : null,
+    );
+
+    return copyWith(rounds: newRounds);
   }
 
   Game toggleQuest(int roundNumber, int suiteIndex, int questIndex, bool isMyPlayer) {
@@ -131,10 +152,12 @@ class Game {
     Round newRound;
 
     if (isCompleting) {
-      bool alreadyCompletedThisRound = isMyPlayer
-          ? (suiteIndex == 1 ? currentRound.myQuestSuite1CompletedThisRound : currentRound.myQuestSuite2CompletedThisRound)
-          : (suiteIndex == 1 ? currentRound.opponentQuestSuite1CompletedThisRound : currentRound.opponentQuestSuite2CompletedThisRound);
-      if (alreadyCompletedThisRound || quest.status != QuestStatus.unlocked) return this;
+      final bool suite1Completed = isMyPlayer ? currentRound.myQuestSuite1CompletedThisRound : currentRound.opponentQuestSuite1CompletedThisRound;
+      final bool suite2Completed = isMyPlayer ? currentRound.myQuestSuite2CompletedThisRound : currentRound.opponentQuestSuite2CompletedThisRound;
+
+      if ((suiteIndex == 1 && suite1Completed) || (suiteIndex == 2 && suite2Completed) || quest.status != QuestStatus.unlocked) {
+        return this;
+      }
       
       targetSuite[questIndex] = quest.copyWith(status: QuestStatus.completed);
       newRound = currentRound.copyWith(
@@ -170,25 +193,55 @@ class Game {
 
   Game recalculateStateFromRound(int startRoundNumber) {
     List<Round> newRounds = List.from(rounds);
-    String? currentPermanentUnderdogId = this.permanentUnderdogPlayerId;
+    
+    if (kDebugMode) {
+      print("\n[DEBUG] === Lancement de recalculateStateFromRound (démarre au tour $startRoundNumber) ===");
+      print("[DEBUG] Statut Underdog Permanent initial (depuis l'objet Game): ${this.permanentUnderdogPlayerId}");
+    }
 
-    for (int i = 0; i < rounds.length; i++) {
-      if (i < startRoundNumber - 1) continue;
+    String? gameWidePermanentUnderdogId;
+    for (int i = 1; i < newRounds.length; i++) {
+        Round previousRound = newRounds[i - 1];
+        Round currentRoundData = newRounds[i];
+        
+        Map<String, int> tempScores = _getAccumulatedScoresUpToRound(i);
+        int myTempScore = tempScores['myScore']!;
+        int oppTempScore = tempScores['opponentScore']!;
+        int tempScoreDiff = (myTempScore - oppTempScore).abs();
 
+        String? tempUnderdogFromScore;
+        if (myTempScore < oppTempScore) tempUnderdogFromScore = 'me';
+        else if (oppTempScore < myTempScore) tempUnderdogFromScore = 'opponent';
+
+        bool myIsEligible = (tempUnderdogFromScore == 'me' && tempScoreDiff >= 11);
+        bool oppIsEligible = (tempUnderdogFromScore == 'opponent' && tempScoreDiff >= 11);
+        
+        final tempPriorityLastRound = previousRound.priorityPlayerId;
+        bool myTookDT = (currentRoundData.initiativePlayerId == 'me' && currentRoundData.priorityPlayerId == 'me' && tempPriorityLastRound == 'opponent');
+        bool oppTookDT = (currentRoundData.initiativePlayerId == 'opponent' && currentRoundData.priorityPlayerId == 'opponent' && tempPriorityLastRound == 'me');
+
+        if (myTookDT && !myIsEligible) gameWidePermanentUnderdogId = 'opponent';
+        if (oppTookDT && !oppIsEligible) gameWidePermanentUnderdogId = 'me';
+    }
+    
+    if (kDebugMode) {
+      print("[DEBUG] Statut Underdog Permanent déterminé pour toute la partie (après scan): $gameWidePermanentUnderdogId");
+    }
+
+    for (int i = 0; i < newRounds.length; i++) {
       int roundNumber = i + 1;
       
-      // CORRECTION : Ajout de la gestion de l'exception du Round 1
       if (roundNumber == 1) {
-        newRounds[i] = newRounds[i].copyWith(
-          underdogPlayerIdForRound: null, // Pas d'underdog au round 1
-          myPlayerIsEligibleForFreeDoubleTurn: false,
-          opponentPlayerIsEligibleForFreeDoubleTurn: false,
-          myPlayerTookDoubleTurn: false,
-          opponentPlayerTookDoubleTurn: false,
-          myPlayerTookPenalizedDoubleTurn: false,
-          opponentPlayerTookPenalizedDoubleTurn: false
-        );
-        continue; // Passe au round suivant
+        final round1 = newRounds[i];
+        final priority = round1.priorityPlayerId ?? this.priorityPlayerIdRound1;
+        if (round1.priorityPlayerId != priority || round1.initiativePlayerId != priority) {
+          newRounds[i] = round1.copyWith(priorityPlayerId: priority, initiativePlayerId: priority);
+        }
+        continue;
+      }
+      
+      if (kDebugMode) {
+        print("\n[DEBUG] --- Calcul pour le Tour $roundNumber ---");
       }
       
       Round previousRound = newRounds[i - 1];
@@ -199,39 +252,49 @@ class Game {
       List<Quest> oppQuests1 = _propagateQuestStatus(previousRound.opponentQuestsSuite1, currentRoundData.opponentQuestsSuite1);
       List<Quest> oppQuests2 = _propagateQuestStatus(previousRound.opponentQuestsSuite2, currentRoundData.opponentQuestsSuite2);
 
-      Map<String, int> previousScores = _getAccumulatedScoresUpToRound(roundNumber);
+      Map<String, int> previousScores = _getAccumulatedScoresUpToRound(i);
       int myPreviousScore = previousScores['myScore']!;
       int opponentPreviousScore = previousScores['opponentScore']!;
-      
-      String? underdogIdForRound = currentPermanentUnderdogId;
-      if (underdogIdForRound == null) {
-        if (myPreviousScore < opponentPreviousScore) {
-          underdogIdForRound = 'me';
-        } else if (opponentPreviousScore < myPreviousScore) {
-          underdogIdForRound = 'opponent';
-        }
-      }
-
       int scoreDiff = (myPreviousScore - opponentPreviousScore).abs();
-      bool myIsEligible = (underdogIdForRound == 'me' && scoreDiff >= 11);
-      bool oppIsEligible = (underdogIdForRound == 'opponent' && scoreDiff >= 11);
 
-      final priorityLastRound = newRounds[i-1].priorityPlayerId;
+      if (kDebugMode) {
+        print("[DEBUG] Scores cumulés du tour précédent (fin T.${i}): Moi=$myPreviousScore, Adv=$opponentPreviousScore");
+      }
       
-      bool myTookDoubleTurn = currentRoundData.initiativePlayerId == 'me' && currentRoundData.priorityPlayerId == 'me' && priorityLastRound == 'opponent';
-      bool oppTookDoubleTurn = currentRoundData.initiativePlayerId == 'opponent' && currentRoundData.priorityPlayerId == 'opponent' && priorityLastRound == 'me';
+      String? underdogFromScore;
+      if (myPreviousScore < opponentPreviousScore) {
+        underdogFromScore = 'me';
+      } else if (opponentPreviousScore < myPreviousScore) {
+        underdogFromScore = 'opponent';
+      } else {
+        underdogFromScore = null;
+      }
       
-      bool myTookPenalizedDT = myTookDoubleTurn && !myIsEligible;
-      bool oppTookPenalizedDT = oppTookDoubleTurn && !oppIsEligible;
-
-      if (myTookPenalizedDT) currentPermanentUnderdogId = 'opponent';
-      if (oppTookPenalizedDT) currentPermanentUnderdogId = 'me';
-
-      newRounds[i] = newRounds[i].copyWith(
+      String? finalUnderdogThisRound = gameWidePermanentUnderdogId ?? underdogFromScore;
+      
+      if (kDebugMode) {
+        print("[DEBUG] Underdog basé sur score: $underdogFromScore. Underdog final appliqué: $finalUnderdogThisRound");
+      }
+      
+      final priorityLastRound = previousRound.priorityPlayerId;
+      bool myIsEligibleForFreeDT = (finalUnderdogThisRound == 'me' && scoreDiff >= 11 && priorityLastRound == 'opponent');
+      bool oppIsEligibleForFreeDT = (finalUnderdogThisRound == 'opponent' && scoreDiff >= 11 && priorityLastRound == 'me');
+      
+      if (kDebugMode) {
+        print("[DEBUG] Éligibilité DT Gratuit: Moi=$myIsEligibleForFreeDT, Adv=$oppIsEligibleForFreeDT");
+      }
+      
+      bool myTookDoubleTurn = (currentRoundData.initiativePlayerId == 'me' && currentRoundData.priorityPlayerId == 'me' && priorityLastRound == 'opponent');
+      bool oppTookDoubleTurn = (currentRoundData.initiativePlayerId == 'opponent' && currentRoundData.priorityPlayerId == 'opponent' && priorityLastRound == 'me');
+      
+      bool myTookPenalizedDT = myTookDoubleTurn && !myIsEligibleForFreeDT;
+      bool oppTookPenalizedDT = oppTookDoubleTurn && !oppIsEligibleForFreeDT;
+      
+      newRounds[i] = currentRoundData.copyWith(
         myQuestsSuite1: myQuests1, myQuestsSuite2: myQuests2, opponentQuestsSuite1: oppQuests1, opponentQuestsSuite2: oppQuests2,
-        underdogPlayerIdForRound: underdogIdForRound,
-        myPlayerIsEligibleForFreeDoubleTurn: myIsEligible,
-        opponentPlayerIsEligibleForFreeDoubleTurn: oppIsEligible,
+        underdogPlayerIdForRound: finalUnderdogThisRound,
+        myPlayerIsEligibleForFreeDoubleTurn: myIsEligibleForFreeDT,
+        opponentPlayerIsEligibleForFreeDoubleTurn: oppIsEligibleForFreeDT,
         myPlayerTookDoubleTurn: myTookDoubleTurn,
         opponentPlayerTookDoubleTurn: oppTookDoubleTurn,
         myPlayerTookPenalizedDoubleTurn: myTookPenalizedDT,
@@ -239,40 +302,55 @@ class Game {
       );
     }
     
-    return copyWith(rounds: newRounds, permanentUnderdogPlayerId: currentPermanentUnderdogId);
+    final String? finalPriorityT1 = newRounds.isNotEmpty ? newRounds[0].priorityPlayerId : this.priorityPlayerIdRound1;
+    
+    if (kDebugMode) {
+      print("[DEBUG] === Fin de recalculateStateFromRound ===");
+    }
+
+    return copyWith(
+      rounds: newRounds,
+      permanentUnderdogPlayerId: gameWidePermanentUnderdogId,
+      priorityPlayerIdRound1: finalPriorityT1,
+    );
   }
   
-  Map<String, int> _getAccumulatedScoresUpToRound(int roundNumber) {
-    if (roundNumber <= 1) return {'myScore': 0, 'opponentScore': 0};
-    int myScore = 0;
-    int oppScore = 0;
-    
-    for(int i = 0; i < roundNumber - 1; i++) {
-        myScore += rounds[i].myScore;
-        oppScore += rounds[i].opponentScore;
-    }
-    
-    final previousRound = rounds[roundNumber - 2];
-    myScore += previousRound.myQuestsSuite1.where((q) => q.status == QuestStatus.completed).length * 5;
-    myScore += previousRound.myQuestsSuite2.where((q) => q.status == QuestStatus.completed).length * 5;
-    oppScore += previousRound.opponentQuestsSuite1.where((q) => q.status == QuestStatus.completed).length * 5;
-    oppScore += previousRound.opponentQuestsSuite2.where((q) => q.status == QuestStatus.completed).length * 5;
+  Map<String, int> _getAccumulatedScoresUpToRound(int roundIndex) {
+    if (roundIndex == 0) return {'myScore': 0, 'opponentScore': 0};
 
-    return {'myScore': myScore, 'opponentScore': oppScore};
+    int myPrimaryScoreSum = 0;
+    int oppPrimaryScoreSum = 0;
+    for (int i = 0; i < roundIndex; i++) {
+      myPrimaryScoreSum += rounds[i].myScore;
+      oppPrimaryScoreSum += rounds[i].opponentScore;
+    }
+
+    final lastRoundInRange = rounds[roundIndex - 1];
+    final int myQuestScore =
+        (lastRoundInRange.myQuestsSuite1.where((q) => q.status == QuestStatus.completed).length * 5) +
+        (lastRoundInRange.myQuestsSuite2.where((q) => q.status == QuestStatus.completed).length * 5);
+    final int oppQuestScore =
+        (lastRoundInRange.opponentQuestsSuite1.where((q) => q.status == QuestStatus.completed).length * 5) +
+        (lastRoundInRange.opponentQuestsSuite2.where((q) => q.status == QuestStatus.completed).length * 5);
+
+    return {
+      'myScore': myPrimaryScoreSum + myQuestScore,
+      'opponentScore': oppPrimaryScoreSum + oppQuestScore,
+    };
   }
 
   List<Quest> _propagateQuestStatus(List<Quest> previousQuests, List<Quest> currentQuestsData) {
     List<Quest> newQuests = _createInitialQuests();
+
     for (int i = 0; i < newQuests.length; i++) {
       if (previousQuests[i].status == QuestStatus.completed || currentQuestsData[i].status == QuestStatus.completed) {
         newQuests[i].status = QuestStatus.completed;
       }
     }
-    for (int i = 0; i < newQuests.length; i++) {
-      if (newQuests[i].status == QuestStatus.completed) {
-        if (i + 1 < newQuests.length && newQuests[i + 1].status == QuestStatus.locked) {
-          newQuests[i + 1].status = QuestStatus.unlocked;
-        }
+
+    for (int i = 0; i < newQuests.length - 1; i++) {
+      if (newQuests[i].status == QuestStatus.completed && newQuests[i + 1].status == QuestStatus.locked) {
+        newQuests[i + 1].status = QuestStatus.unlocked;
       }
     }
     return newQuests;
@@ -298,7 +376,7 @@ class Game {
     String? id, DateTime? date, String? myPlayerName, String? myFactionName, String? myFactionImageUrl, int? myDrops, bool? myAuxiliaryUnits,
     String? opponentPlayerName, String? opponentFactionName, String? opponentFactionImageUrl, int? opponentDrops, bool? opponentAuxiliaryUnits,
     String? attackerPlayerId, String? priorityPlayerIdRound1, List<Round>? rounds, int? scoreOutOf20, String? notes, GameState? gameState,
-    String? permanentUnderdogPlayerId,
+    dynamic permanentUnderdogPlayerId = const Object(),
   }) {
     return Game(
       id: id ?? this.id, date: date ?? this.date, myPlayerName: myPlayerName ?? this.myPlayerName, myFactionName: myFactionName ?? this.myFactionName,
@@ -308,7 +386,7 @@ class Game {
       opponentAuxiliaryUnits: opponentAuxiliaryUnits ?? this.opponentAuxiliaryUnits, attackerPlayerId: attackerPlayerId ?? this.attackerPlayerId,
       priorityPlayerIdRound1: priorityPlayerIdRound1 ?? this.priorityPlayerIdRound1, rounds: rounds ?? this.rounds.map((r) => r.copyWith()).toList(),
       scoreOutOf20: scoreOutOf20 ?? this.scoreOutOf20, notes: notes ?? this.notes, gameState: gameState ?? this.gameState,
-      permanentUnderdogPlayerId: permanentUnderdogPlayerId ?? this.permanentUnderdogPlayerId,
+      permanentUnderdogPlayerId: permanentUnderdogPlayerId is String? ? permanentUnderdogPlayerId : this.permanentUnderdogPlayerId,
     );
   }
 
@@ -337,25 +415,26 @@ class Game {
     };
   }
   
-  static int calculateScoreOutOf20(Game game) {
-    int myTotalScore = game.totalMyScore; int opponentTotalScore = game.totalOpponentScore;
+  Map<String, int> getFinalScoresOutOf20() {
+    int myTotalScore = this.totalMyScore;
+    int opponentTotalScore = this.totalOpponentScore;
     int scoreDiff = (myTotalScore - opponentTotalScore).abs();
-    if (myTotalScore > opponentTotalScore) return getWinningScore(scoreDiff);
-    if (opponentTotalScore > myTotalScore) return getLosingScore(scoreDiff);
-    return 10;
+
+    if (myTotalScore > totalOpponentScore) {
+      int myFinalScore = Game.getWinningScore(scoreDiff);
+      return {'myFinalScore': myFinalScore, 'opponentFinalScore': 20 - myFinalScore};
+    } else if (opponentTotalScore > myTotalScore) {
+      int opponentFinalScore = Game.getWinningScore(scoreDiff);
+      return {'myFinalScore': 20 - opponentFinalScore, 'opponentFinalScore': opponentFinalScore};
+    } else {
+      return {'myFinalScore': 10, 'opponentFinalScore': 10};
+    }
   }
 
   static int getWinningScore(int diff) {
     if (diff >= 46) return 20; if (diff >= 41) return 19; if (diff >= 36) return 18; if (diff >= 31) return 17;
     if (diff >= 26) return 16; if (diff >= 21) return 15; if (diff >= 16) return 14; if (diff >= 11) return 13;
     if (diff >= 6) return 12; if (diff >= 1) return 11;
-    return 10;
-  }
-
-  static int getLosingScore(int diff) {
-    if (diff >= 46) return 0; if (diff >= 41) return 1; if (diff >= 36) return 2; if (diff >= 31) return 3;
-    if (diff >= 26) return 4; if (diff >= 21) return 5; if (diff >= 16) return 6; if (diff >= 11) return 7;
-    if (diff >= 6) return 8; if (diff >= 1) return 9;
     return 10;
   }
 }

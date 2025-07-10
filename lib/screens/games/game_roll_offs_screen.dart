@@ -20,8 +20,7 @@ class _GameRollOffsScreenState extends State<GameRollOffsScreen> {
   void initState() {
     super.initState();
     _selectedAttacker = widget.game.attackerPlayerId;
-    // Set default priority for Round 1 to 'me' if not already set
-    _selectedPriorityRound1 = widget.game.priorityPlayerIdRound1 ?? 'me'; 
+    _selectedPriorityRound1 = widget.game.priorityPlayerIdRound1;
   }
 
   void _updateGame() {
@@ -31,12 +30,11 @@ class _GameRollOffsScreenState extends State<GameRollOffsScreen> {
     ));
   }
 
-  // --- NOUVELLE FONCTION D'AIDE POUR LES BOUTONS DE SÉLECTION ---
   Widget _buildPlayerSelectionButton({
-    required String playerKey, // 'me' ou 'opponent'
-    required String playerName, // Le nom du joueur à afficher
-    required bool isSelected, // Si ce bouton est actuellement sélectionné
-    required ValueChanged<String> onSelect, // Callback quand le bouton est sélectionné
+    required String playerKey,
+    required String playerName,
+    required bool isSelected,
+    required ValueChanged<String?> onSelect,
   }) {
     return Expanded(
       child: Padding(
@@ -44,10 +42,11 @@ class _GameRollOffsScreenState extends State<GameRollOffsScreen> {
         child: ElevatedButton(
           onPressed: () => onSelect(playerKey),
           style: ElevatedButton.styleFrom(
-            backgroundColor: isSelected ? Theme.of(context).primaryColor : Theme.of(context).disabledColor,
-            foregroundColor: isSelected ? Colors.white : Colors.black,
+            backgroundColor: isSelected ? Theme.of(context).primaryColor : Theme.of(context).cardColor,
+            foregroundColor: isSelected ? Colors.white : Theme.of(context).textTheme.bodyLarge?.color,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             textStyle: const TextStyle(fontSize: 16),
+            side: BorderSide(color: isSelected ? Theme.of(context).primaryColor : Colors.grey.shade400),
           ),
           child: Text(playerName),
         ),
@@ -57,7 +56,6 @@ class _GameRollOffsScreenState extends State<GameRollOffsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Utilisez les noms des joueurs de l'objet Game
     String myPlayerName = widget.game.myPlayerName;
     String opponentPlayerName = widget.game.opponentPlayerName;
 
@@ -70,7 +68,7 @@ class _GameRollOffsScreenState extends State<GameRollOffsScreen> {
             'Qui est l\'attaquant ?',
             style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color),
           ),
-          const SizedBox(height: 10), // Ajout d'un petit espace
+          const SizedBox(height: 10),
           Row(
             children: [
               _buildPlayerSelectionButton(
@@ -80,6 +78,9 @@ class _GameRollOffsScreenState extends State<GameRollOffsScreen> {
                 onSelect: (value) {
                   setState(() {
                     _selectedAttacker = value;
+                    if (_selectedPriorityRound1 == null) {
+                      _selectedPriorityRound1 = value;
+                    }
                     _updateGame();
                   });
                 },
@@ -91,6 +92,9 @@ class _GameRollOffsScreenState extends State<GameRollOffsScreen> {
                 onSelect: (value) {
                   setState(() {
                     _selectedAttacker = value;
+                    if (_selectedPriorityRound1 == null) {
+                      _selectedPriorityRound1 = value;
+                    }
                     _updateGame();
                   });
                 },
@@ -99,12 +103,11 @@ class _GameRollOffsScreenState extends State<GameRollOffsScreen> {
           ),
           const SizedBox(height: 30),
 
-          // Qui a gagné la priorité pour le Tour 1 ?
           Text(
-            'Qui a gagné la priorité pour le Tour 1 ?',
+            'Qui a fini de se déployer en premier ?',
             style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color),
           ),
-          const SizedBox(height: 10), // Ajout d'un petit espace
+          const SizedBox(height: 10),
           Row(
             children: [
               _buildPlayerSelectionButton(

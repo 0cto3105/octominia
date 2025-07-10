@@ -66,7 +66,7 @@ class _GamesScreenState extends State<GamesScreen> {
       ),
     ).closed.then((reason) {
       if (reason != SnackBarClosedReason.action) {
-        if (!mounted) return; // Vérifie si le widget est toujours dans l'arbre
+        if (!mounted) return;
         _gameStorage.deleteGame(gameToDelete.id);
       }
     });
@@ -132,8 +132,7 @@ class _GamesScreenState extends State<GamesScreen> {
       case GameResult.victory: return Colors.green;
       case GameResult.defeat: return Colors.red;
       case GameResult.equality: return Colors.amber;
-      case GameState.completed:
-      case GameResult.inProgress: default: return Colors.blue;
+      default: return Colors.blue;
     }
   }
 
@@ -189,11 +188,16 @@ class _GamesScreenState extends State<GamesScreen> {
                   itemBuilder: (context, index) {
                     final game = _games[index];
                     final String formattedDate = DateFormat('dd MMM - HH:mm').format(game.date);
-                    final String myScoreText = game.totalMyScore.toString();
-                    final String opponentScoreText = game.totalOpponentScore.toString();
                     final Color resultColor = _getResultColor(game.result);
                     final String formattedResult = game.result.displayTitle.toUpperCase();
-                    final int displayScoreOutOf20 = Game.calculateScoreOutOf20(game);
+                    
+                    // CORRECTION: On appelle la méthode sur l'instance 'game'
+                    final finalScores = game.getFinalScoresOutOf20();
+                    final String myFinalScore = finalScores['myFinalScore'].toString();
+                    final String opponentFinalScore = finalScores['opponentFinalScore'].toString();
+                    
+                    final String myTotalScoreText = game.totalMyScore.toString();
+                    final String opponentTotalScoreText = game.totalOpponentScore.toString();
 
                     return Dismissible(
                       key: ValueKey(game.id),
@@ -247,9 +251,10 @@ class _GamesScreenState extends State<GamesScreen> {
                                             mainAxisAlignment: MainAxisAlignment.center,
                                             crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
-                                              Text('${displayScoreOutOf20}/20', style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary)),
+                                              Text('$myFinalScore - $opponentFinalScore', style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary)),
                                               const SizedBox(height: 2.0),
-                                              Text('$myScoreText - $opponentScoreText', style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white)),
+                                              // CORRECTION: Ajout des parenthèses
+                                              Text('($myTotalScoreText - $opponentTotalScoreText)', style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.w400, color: Theme.of(context).textTheme.bodySmall?.color)),
                                               const SizedBox(height: 2.0),
                                               Text(formattedResult, style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold, color: resultColor)),
                                             ],
