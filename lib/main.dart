@@ -122,7 +122,7 @@ class _MainScreenState extends State<MainScreen> {
   // La méthode _onItemTapped est modifiée pour ne rien faire
   // si l'index n'est pas 1 (GamesScreen).
   void _onItemTapped(int index) {
-    if (index == 1) { // Autoriser uniquement le clic sur l'onglet "Games"
+    if (index == 1 || index == 0) { // Autoriser uniquement le clic sur l'onglet "Games"
       setState(() {
         _selectedIndex = index;
       });

@@ -65,7 +65,7 @@ class _GameRollOffsScreenState extends State<GameRollOffsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Qui est l\'attaquant ?',
+            'Who is the attacker',
             style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color),
           ),
           const SizedBox(height: 10),
@@ -104,7 +104,7 @@ class _GameRollOffsScreenState extends State<GameRollOffsScreen> {
           const SizedBox(height: 30),
 
           Text(
-            'Qui a fini de se déployer en premier ?',
+            'Who went first this battle round?',
             style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color),
           ),
           const SizedBox(height: 10),

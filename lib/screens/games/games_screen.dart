@@ -1,5 +1,6 @@
 // lib/screens/games_screen.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:octominia/models/game.dart';
@@ -174,11 +175,12 @@ class _GamesScreenState extends State<GamesScreen> {
                     children: [
                       const Text('Aucune partie trouvée.', style: TextStyle(fontSize: 18, color: Colors.white70)),
                       const SizedBox(height: 10),
-                      ElevatedButton(
-                        onPressed: _insertDemoGamesIfNeeded,
-                        style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).primaryColor, foregroundColor: Colors.black),
-                        child: const Text('Ajouter des parties de démo'),
-                      ),
+                      if (!kReleaseMode)
+                        ElevatedButton(
+                          onPressed: _insertDemoGamesIfNeeded,
+                          style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).primaryColor, foregroundColor: Colors.black),
+                          child: const Text('Ajouter des parties de démo'),
+                        ),
                     ],
                   ),
                 )
@@ -191,7 +193,6 @@ class _GamesScreenState extends State<GamesScreen> {
                     final Color resultColor = _getResultColor(game.result);
                     final String formattedResult = game.result.displayTitle.toUpperCase();
                     
-                    // CORRECTION: On appelle la méthode sur l'instance 'game'
                     final finalScores = game.getFinalScoresOutOf20();
                     final String myFinalScore = finalScores['myFinalScore'].toString();
                     final String opponentFinalScore = finalScores['opponentFinalScore'].toString();
@@ -253,7 +254,6 @@ class _GamesScreenState extends State<GamesScreen> {
                                             children: [
                                               Text('$myFinalScore - $opponentFinalScore', style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary)),
                                               const SizedBox(height: 2.0),
-                                              // CORRECTION: Ajout des parenthèses
                                               Text('($myTotalScoreText - $opponentTotalScoreText)', style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.w400, color: Theme.of(context).textTheme.bodySmall?.color)),
                                               const SizedBox(height: 2.0),
                                               Text(formattedResult, style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold, color: resultColor)),

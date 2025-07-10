@@ -1,9 +1,8 @@
 // lib/screens/games/game_center.dart
 
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:octominia/models/game.dart';
 import 'package:octominia/services/game_json_storage.dart';
 import 'package:octominia/screens/games/game_setup_screen.dart';
@@ -28,34 +27,41 @@ class GamerCenterScreen extends StatefulWidget {
 
 class _GamerCenterScreenState extends State<GamerCenterScreen> {
   late PageController _pageController;
-  late Game _game;
+  Game? _game;
   final GameJsonStorage _gameStorage = GameJsonStorage();
   bool _gameHasBeenSavedOnce = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    
-    _game = widget.initialGame ?? Game(
-      date: DateTime.now(),
-      myPlayerName: 'Joueur 1',
-      myFactionName: '',
-      myDrops: 1,
-      myAuxiliaryUnits: false,
-      opponentPlayerName: 'Joueur 2',
-      opponentFactionName: '',
-      opponentDrops: 1,
-      opponentAuxiliaryUnits: false,
-    );
-    
-    _gameHasBeenSavedOnce = widget.initialGame != null;
+    _initializeGame();
+  }
 
-    if (widget.initialGame != null) {
-        _game = _game.recalculateStateFromRound(1);
+  Future<void> _initializeGame() async {
+    if (widget.initialGame == null) {
+      final prefs = await SharedPreferences.getInstance();
+      final defaultPlayerName = prefs.getString('defaultPlayerName') ?? 'Me';
+      _game = Game(
+        date: DateTime.now(),
+        myPlayerName: defaultPlayerName,
+        myFactionName: '',
+        myDrops: 1,
+        myAuxiliaryUnits: false,
+        opponentPlayerName: 'Opponent',
+        opponentFactionName: '',
+        opponentDrops: 1,
+        opponentAuxiliaryUnits: false,
+      );
+    } else {
+      _game = widget.initialGame!;
+      _gameHasBeenSavedOnce = true;
+      _game = _game!.recalculateStateFromRound(1);
     }
-    
-    int startingPageIndex = _getPageIndexForGameState(_game.gameState);
+
+    int startingPageIndex = _getPageIndexForGameState(_game!.gameState);
     _pageController = PageController(initialPage: startingPageIndex);
+    setState(() { _isLoading = false; });
   }
 
   int _getPageIndexForGameState(GameState state) {
@@ -76,8 +82,10 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
 
   @override
   void dispose() {
-    _saveGame();
-    _pageController.dispose();
+    if (_game != null) {
+        _saveGame();
+    }
+    _pageController?.dispose();
     super.dispose();
   }
 
@@ -88,8 +96,10 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
   }
 
   Future<void> _saveGame() async {
+    if (_game == null) return;
     try {
-      final finalGameState = _game.recalculateStateFromRound(1);
+      // Le recalcul final se fait maintenant avant d'aller au résumé ou de quitter
+      final finalGameState = _game!.recalculateStateFromRound(1);
       
       if (!_gameHasBeenSavedOnce) {
         await _gameStorage.addGame(finalGameState);
@@ -108,26 +118,53 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
   }
   
   void _goToPage(int pageIndex) {
-    _pageController.animateToPage(
+    _pageController?.animateToPage(
       pageIndex,
       duration: const Duration(milliseconds: 300),
       curve: Curves.ease,
     );
   }
   
+  // MODIFIÉ : La logique de navigation gère maintenant la finalisation du jeu
   void _nextPage() {
-    int currentPageIndex = _pageController.page!.round();
+    if (_pageController == null || !_pageController!.hasClients) return;
+    int currentPageIndex = _pageController!.page!.round();
+
+    // Si on est sur le dernier écran (Résumé), le bouton "Suivant" devient un bouton pour quitter
+    if (currentPageIndex == 7) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    Game gameToUpdate = _game!;
+
+    // Si on est sur l'écran du Tour 5 (index 6) et qu'on clique sur "Suivant"
+    if (currentPageIndex == 6) {
+      // On finalise la partie AVANT de naviguer vers le résumé
+      final finalScores = gameToUpdate.getFinalScoresOutOf20();
+      final int scoreToSave = max(finalScores['myFinalScore']!, finalScores['opponentFinalScore']!);
+      
+      gameToUpdate = gameToUpdate.copyWith(
+        gameState: GameState.completed,
+        scoreOutOf20: scoreToSave,
+      );
+    } else {
+      // Pour tous les autres clics sur "Suivant", on fait un recalcul standard
+      gameToUpdate = _game!.recalculateStateFromRound(1);
+    }
+    
+    _updateGameInMemory(gameToUpdate);
+    
     if (currentPageIndex < 7) {
-      final recalculatedGame = _game.recalculateStateFromRound(1);
-      _updateGameInMemory(recalculatedGame);
       _goToPage(currentPageIndex + 1);
     }
   }
 
   void _previousPage() {
-    int currentPageIndex = _pageController.page!.round();
+    if (_pageController == null || !_pageController!.hasClients) return;
+    int currentPageIndex = _pageController!.page!.round();
     if (currentPageIndex > 0) {
-      final recalculatedGame = _game.recalculateStateFromRound(1);
+      final recalculatedGame = _game!.recalculateStateFromRound(1);
       _updateGameInMemory(recalculatedGame);
       _goToPage(currentPageIndex - 1);
     } else {
@@ -137,10 +174,17 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return GameTemplate(
-      game: _game,
-      pageController: _pageController,
-      currentPageIndex: _pageController.hasClients ? _pageController.page!.round() : _getPageIndexForGameState(_game.gameState),
+      game: _game!,
+      pageController: _pageController!,
+      currentPageIndex: _pageController!.hasClients ? _pageController!.page!.round() : _getPageIndexForGameState(_game!.gameState),
       onPageChanged: (index) {
         setState(() {});
       },
@@ -149,11 +193,11 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
       onReturnToList: () => Navigator.of(context).pop(),
       pages: [
         GameSetupScreen(
-          game: _game,
+          game: _game!,
           onUpdate: (updatedGame) => _updateGameInMemory(updatedGame),
         ),
         GameRollOffsScreen(
-          game: _game,
+          game: _game!,
           onUpdate: (updatedGame) {
             final newGame = updatedGame.recalculateStateFromRound(1);
             _updateGameInMemory(newGame);
@@ -162,26 +206,17 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
         for (int i = 1; i <= 5; i++)
           GameRoundScreen(
             roundNumber: i,
-            game: _game,
+            game: _game!,
             onUpdateRound: (roundNumber, {myScore, opponentScore, priorityPlayerId, initiativePlayerId}) {
               Game newGame;
               if (priorityPlayerId != null || initiativePlayerId != null) {
-                if (kDebugMode) {
-                  print("--- [Game Center] AVANT recalcul (changement de priorité/init) ---");
-                  print("Jeu actuel: permanentUnderdog='${_game.permanentUnderdogPlayerId}'");
-                }
-                newGame = _game.updateRoundAndRecalculate(
+                newGame = _game!.updateRoundAndRecalculate(
                   roundNumber,
                   priorityPlayerId: priorityPlayerId,
                   initiativePlayerId: initiativePlayerId,
                 );
-                if (kDebugMode) {
-                  print("--- [Game Center] APRES recalcul ---");
-                  print("Nouveau jeu: permanentUnderdog='${newGame.permanentUnderdogPlayerId}'");
-                  print("Nouveau Round $roundNumber: underdog='${newGame.rounds[roundNumber-1].underdogPlayerIdForRound}'");
-                }
               } else {
-                newGame = _game.setPrimaryScore(
+                newGame = _game!.setPrimaryScore(
                   roundNumber: roundNumber,
                   score: (myScore ?? opponentScore)!,
                   isMyPlayer: myScore != null,
@@ -190,24 +225,14 @@ class _GamerCenterScreenState extends State<GamerCenterScreen> {
               _updateGameInMemory(newGame);
             },
             onToggleQuest: (roundNumber, suiteIndex, questIndex, isMyPlayer) {
-              final newGame = _game.toggleQuest(roundNumber, suiteIndex, questIndex, isMyPlayer);
+              final newGame = _game!.toggleQuest(roundNumber, suiteIndex, questIndex, isMyPlayer);
               _updateGameInMemory(newGame);
             },
           ),
         GameSummaryScreen(
-          game: _game,
-          onSave: () {
-            final finalScores = _game.getFinalScoresOutOf20();
-            final int scoreToSave = max(finalScores['myFinalScore']!, finalScores['opponentFinalScore']!);
-
-            final finalGame = _game.copyWith(
-              gameState: GameState.completed,
-              scoreOutOf20: scoreToSave,
-            );
-            
-            _updateGameInMemory(finalGame);
-            Navigator.of(context).pop();
-          },
+          game: _game!,
+          // La fonction onSave est maintenant vide car la logique est dans _nextPage
+          onSave: () {}, 
         ),
       ],
     );

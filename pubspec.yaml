@@ -37,6 +37,8 @@ dependencies:
   intl: ^0.18.1
   uuid: ^4.3.3
   path: ^1.8.3
+  shared_preferences: ^2.2.3
+  flutter_launcher_icons: ^0.13.1
 
 dev_dependencies:
   flutter_test:
@@ -66,6 +68,13 @@ flutter:
 
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
+
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_icon.png" # Mettez ici le bon chemin vers votre icône
+  min_sdk_android: 21 # Requis pour la compatibilité Android
 
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a

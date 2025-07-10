@@ -65,7 +65,7 @@ class GameRoundScreen extends StatelessWidget {
               if (roundNumber > 1)
                 _buildControlRow(
                   context: context,
-                  label: 'Initiative',
+                  label: 'Who won priority this battle round?',
                   selectedValue: currentRound.initiativePlayerId,
                   onChanged: (value) => onUpdateRound(roundNumber, initiativePlayerId: value),
                 ),
@@ -73,7 +73,7 @@ class GameRoundScreen extends StatelessWidget {
 
               _buildControlRow(
                 context: context,
-                label: 'Priorité',
+                label: 'Who went first this battle round?',
                 selectedValue: priorityPlayerThisRound,
                 // CORRECTION: L'utilisateur peut maintenant changer la priorité à chaque tour, y compris le T1
                 onChanged: (value) => onUpdateRound(roundNumber, priorityPlayerId: value),

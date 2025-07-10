@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:octominia/models/game.dart';
-import 'package:octominia/models/round.dart'; // Importez Round si des informations de round sont affichées directement
+import 'package:octominia/models/round.dart';
 
 class GameTemplate extends StatelessWidget {
   final Game game;
@@ -28,32 +28,27 @@ class GameTemplate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Suppression des trigrammes, utilisation directe des noms complets
-    // String myTrigram = game.myPlayerName.length >= 3 ? game.myPlayerName.substring(0, 3).toUpperCase() : game.myPlayerName.toUpperCase();
-    // String opponentTrigram = game.opponentPlayerName.length >= 3 ? game.opponentPlayerName.substring(0, 3).toUpperCase() : game.opponentPlayerName.toUpperCase();
-
     Widget appBarTitleWidget;
 
     if (currentPageIndex >= 2 && currentPageIndex <= 6) { // Rounds 1 to 5
-      appBarTitleWidget = Align( // Aligner le contenu à gauche
+      appBarTitleWidget = Align(
         alignment: Alignment.centerLeft,
         child: Row(
-          mainAxisSize: MainAxisSize.min, // Occuper l'espace minimal
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Afficher les scores totaux de la partie
             Text(
               '${game.totalMyScore}-${game.totalOpponentScore}',
               style: const TextStyle(
-                fontSize: 28, // Taille plus grande pour les scores
+                fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(width: 8), // Espace entre les scores et les noms
+            const SizedBox(width: 8),
             Text(
-              '${game.myPlayerName} vs ${game.opponentPlayerName}', // MODIFIÉ ICI pour utiliser les noms complets
+              '${game.myPlayerName} vs ${game.opponentPlayerName}',
               style: const TextStyle(
-                fontSize: 16, // Taille plus petite pour les noms
+                fontSize: 16,
                 color: Colors.white70,
               ),
             ),
@@ -64,19 +59,29 @@ class GameTemplate extends StatelessWidget {
       String titleText;
    switch (currentPageIndex) {
         case 0:
-          titleText = 'Game Setup'; // Configuration de la Partie
+          titleText = 'Game Setup';
           break;
         case 1:
-          titleText = 'Dice Roll & Priority'; // Jet de Dés & Priorité
+          titleText = 'Dice Roll & Priority';
           break;
         case 7:
-          titleText = 'Game Summary'; // Résumé de la Partie
+          titleText = 'Game Summary';
           break;
         default:
-          titleText = 'Game'; // Partie (ou 'Round' si cela fait référence aux tours de jeu)
+          titleText = 'Game';
           break;
       }
-      appBarTitleWidget = Text(titleText); // Pour les autres écrans, un simple Text
+      appBarTitleWidget = Text(titleText);
+    }
+
+    // MODIFIÉ : Logique pour le texte du bouton Suivant/Terminer
+    String nextButtonText;
+    if (currentPageIndex == 6) { // Si on est au tour 5
+      nextButtonText = 'Voir le résumé';
+    } else if (currentPageIndex == 7) { // Si on est sur le résumé
+      nextButtonText = 'Terminer';
+    } else {
+      nextButtonText = 'Suivant';
     }
 
     return PopScope(
@@ -88,9 +93,9 @@ class GameTemplate extends StatelessWidget {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: appBarTitleWidget, // Utilisation du Widget personnalisé
+          title: appBarTitleWidget,
           backgroundColor: Colors.redAccent,
-          centerTitle: false, // Ne pas centrer le titre pour permettre l'alignement à gauche
+          centerTitle: false,
           actions: [
             IconButton(
               icon: const Icon(Icons.close),
@@ -115,7 +120,7 @@ class GameTemplate extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row( // Nouveau Row pour le bouton Précédent et le texte du tour
+                    Row(
                       children: [
                         ElevatedButton.icon(
                           onPressed: onPreviousPage,
@@ -124,17 +129,17 @@ class GameTemplate extends StatelessWidget {
                             foregroundColor: Colors.white,
                           ),
                           icon: const Icon(Icons.arrow_back),
-                          label: const Text(''), // Étiquette vide pour le bouton
+                          label: const Text(''),
                         ),
-                        if (currentPageIndex >= 2 && currentPageIndex <= 6) // Afficher "Tour X" seulement pour les rounds
+                        if (currentPageIndex >= 2 && currentPageIndex <= 6)
                           Padding(
-                            padding: const EdgeInsets.only(left: 20.0), // Espacement entre le bouton et le texte
+                            padding: const EdgeInsets.only(left: 20.0),
                             child: Text(
                               'Tour ${currentPageIndex - 1}',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white, // Couleur du texte
+                                color: Colors.white,
                               ),
                             ),
                           ),
@@ -146,7 +151,7 @@ class GameTemplate extends StatelessWidget {
                         backgroundColor: Colors.redAccent,
                         foregroundColor: Colors.white,
                       ),
-                      child: Text(currentPageIndex == 7 ? 'Finaliser la Partie' : 'Suivant'),
+                      child: Text(nextButtonText), // Utilisation du texte dynamique
                     ),
                   ],
                 ),
